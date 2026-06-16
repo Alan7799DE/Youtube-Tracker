@@ -1,9 +1,6 @@
 # macOS
 .DS_Store
 
-# Tooling local (skills de Claude Code)
-.claude/
-
 # Entornos / secretos (para cuando empiece la implementación)
 .env
 .env.*
