@@ -167,7 +167,8 @@ create table campaigns (
   starts_at   date,                                        -- inicio de la ventana (null = desde la creación)
   ends_at     date not null,                               -- fin del plazo (OBLIGATORIO): el "revisor de plazos" mira esto
   created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+  updated_at  timestamptz not null default now(),
+  constraint campaigns_window_order check (starts_at is null or starts_at <= ends_at)
 );
 comment on table campaigns is 'Campañas publicitarias. Cada una define un brief (requirements) y un plazo. No hard-delete.';
 
