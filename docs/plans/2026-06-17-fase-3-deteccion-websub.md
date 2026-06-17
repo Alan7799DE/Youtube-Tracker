@@ -34,6 +34,8 @@ backend/
       leases.py        # renovación de suscripciones por vencer
       deadlines.py     # revisor de plazos (pending sin verificación -> failed)
     association.py     # video -> campaña(s) por link/código en la descripción
+    verify_multi.py    # verifica varias campañas reutilizando un transcript (usa evaluate de Fase 1)
+    channel_status.py  # mapeo veredicto -> estado del campaign_channel (precedencia)
   tests/
     test_websub_subscribe.py
     test_websub_feed.py
@@ -44,6 +46,8 @@ backend/
     test_jobs_leases.py
     test_jobs_deadlines.py
     test_association.py
+    test_verify_multi.py
+    test_channel_status.py
 ```
 
 ---
@@ -885,6 +889,175 @@ Expected: PASS (Fases 1 + 2 + 3).
 ```bash
 git add backend/verifier/jobs/deadlines.py backend/tests/test_jobs_deadlines.py
 git commit -m "feat: revisor de plazos (pending sin verificación -> failed)"
+```
+
+---
+
+## Tarea 10: Verificación multi-campaña reutilizando el transcript
+
+Un video puede ser la publi de varias campañas (diseño 5.5): se baja el transcript **una sola vez** y se verifica contra cada brief. Reusa `evaluate` de la Fase 1 (núcleo sin fetch).
+
+**Files:**
+- Create: `backend/verifier/verify_multi.py`
+- Test: `backend/tests/test_verify_multi.py`
+
+- [ ] **Step 1: Escribir el test que falla**
+
+```python
+from verifier.models import Brief, Requirement, VideoMetadata, Transcript, TranscriptSegment, RequirementResult
+from verifier.verify_multi import verify_campaigns
+
+
+def _brief(link):
+    return Brief(game_name="G", requirements=[
+        Requirement(code="R1", type="link_in_desc", spec={"expected_link": link}, method="deterministic", required=True),
+    ])
+
+
+def test_verifies_each_campaign_reusing_transcript(mocker):
+    md = VideoMetadata(video_id="v", description="https://dl.game/a")
+    transcript = Transcript(segments=[TranscriptSegment(text="texto", start=0.0, duration=1.0)])
+    provider = mocker.Mock()
+    provider.get_transcript.return_value = transcript
+    llm = mocker.Mock(return_value=[])
+
+    briefs = {"c1": _brief("https://dl.game/a"), "c2": _brief("https://dl.game/b")}
+    out = verify_campaigns(
+        "v", briefs,
+        metadata_client=lambda vid: md,
+        transcript_provider=provider,
+        llm_check=llm,
+    )
+    assert out["c1"].overall_status == "pass"   # el link de c1 aparece
+    assert out["c2"].overall_status == "fail"   # el de c2 no
+    provider.get_transcript.assert_called_once_with("v")  # transcript una sola vez
+```
+
+- [ ] **Step 2: Correr el test para ver que falla**
+
+Run: `pytest tests/test_verify_multi.py -v`
+Expected: FAIL con `ModuleNotFoundError`.
+
+- [ ] **Step 3: Implementar `backend/verifier/verify_multi.py`**
+
+```python
+from __future__ import annotations
+from typing import Callable
+from verifier.models import Brief, Verification, VideoMetadata
+from verifier.verify import evaluate, MetadataClient, LLMCheck
+
+
+def verify_campaigns(
+    video_id: str,
+    briefs_by_campaign: dict[str, Brief],
+    *,
+    metadata_client: MetadataClient,
+    transcript_provider,
+    llm_check: LLMCheck,
+) -> dict[str, Verification]:
+    metadata: VideoMetadata = metadata_client(video_id)
+    needs_transcript = any(
+        any(r.method == "llm" for r in b.requirements) for b in briefs_by_campaign.values()
+    )
+    transcript = transcript_provider.get_transcript(video_id) if needs_transcript else None
+    return {
+        campaign_id: evaluate(brief, metadata, transcript, llm_check=llm_check)
+        for campaign_id, brief in briefs_by_campaign.items()
+    }
+```
+
+- [ ] **Step 4: Correr el test para ver que pasa**
+
+Run: `pytest tests/test_verify_multi.py -v`
+Expected: PASS (1 test).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add backend/verifier/verify_multi.py backend/tests/test_verify_multi.py
+git commit -m "feat: verificación multi-campaña reutilizando el transcript"
+```
+
+---
+
+## Tarea 11: Mapeo del veredicto al estado del `campaign_channel`
+
+Traduce el `overall_status` de una verificación al estado del influencer, con la precedencia del diseño (5.5): `verified > incomplete > pending`. Una vez `verified`, no retrocede; un `fail` lo deja `incomplete` (puede mejorar a `verified` si re-suben); un `review` no cambia el estado (sigue esperando / cola humana).
+
+**Files:**
+- Create: `backend/verifier/channel_status.py`
+- Test: `backend/tests/test_channel_status.py`
+
+- [ ] **Step 1: Escribir el test que falla**
+
+```python
+from verifier.channel_status import next_channel_status
+
+
+def test_pass_sets_verified():
+    assert next_channel_status("pending", "pass") == "verified"
+
+
+def test_fail_sets_incomplete():
+    assert next_channel_status("pending", "fail") == "incomplete"
+
+
+def test_review_keeps_current():
+    assert next_channel_status("pending", "review") == "pending"
+    assert next_channel_status("incomplete", "review") == "incomplete"
+
+
+def test_verified_never_regresses():
+    assert next_channel_status("verified", "fail") == "verified"
+    assert next_channel_status("verified", "review") == "verified"
+
+
+def test_incomplete_can_upgrade_to_verified():
+    assert next_channel_status("incomplete", "pass") == "verified"
+```
+
+- [ ] **Step 2: Correr el test para ver que falla**
+
+Run: `pytest tests/test_channel_status.py -v`
+Expected: FAIL con `ModuleNotFoundError`.
+
+- [ ] **Step 3: Implementar `backend/verifier/channel_status.py`**
+
+```python
+from __future__ import annotations
+from verifier.models import OverallStatus
+
+ChannelStatus = str  # 'pending' | 'verified' | 'incomplete' | 'failed'
+
+
+def next_channel_status(current: ChannelStatus, verdict: OverallStatus) -> ChannelStatus:
+    """Aplica una verificación al estado del campaign_channel.
+    Precedencia: verified > incomplete > pending. 'failed' lo decide el revisor de plazos."""
+    if current == "verified":
+        return "verified"  # estado ganador, no retrocede
+    if verdict == "pass":
+        return "verified"
+    if verdict == "fail":
+        return "incomplete"
+    # verdict == "review": no cambia (sigue esperando / cola humana)
+    return current
+```
+
+- [ ] **Step 4: Correr el test para ver que pasa**
+
+Run: `pytest tests/test_channel_status.py -v`
+Expected: PASS (5 tests).
+
+- [ ] **Step 5: Correr toda la suite**
+
+Run: `pytest -q`
+Expected: PASS (Fases 1 + 2 + 3 completas).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add backend/verifier/channel_status.py backend/tests/test_channel_status.py
+git commit -m "feat: mapeo veredicto -> estado del campaign_channel (precedencia)"
 ```
 
 ---

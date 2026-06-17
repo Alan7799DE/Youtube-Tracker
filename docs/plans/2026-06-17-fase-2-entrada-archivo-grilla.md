@@ -706,4 +706,5 @@ git commit -m "feat: extracción del brief con LLM (structured output)"
 - **Quota:** `channels.list` (forHandle/forUsername/id) cuesta 1 unidad; está bien. Evitar `search` (100 unidades).
 - **Handles vs custom URLs:** `forHandle` requiere el `@`. Las `/c/` y `/user/` legacy se resuelven con `forUsername`, que a veces no matchea; en ese caso el canal queda `unresolved` para corregir a mano en la grilla (Fase 4).
 - **Aplicar el `ReconcilePlan`** contra Supabase + disparar resolución/suscripción es trabajo de integración (Fases 3–4); acá queda la lógica pura testeada.
+- **Modelo de plazo por campaña:** el `ends_at` (obligatorio) ya vive en el `schema.sql`; la carga del plazo es parte del alta de campaña en la UI (Fase 4) y su consumo es el "revisor de plazos" (Fase 3, Tarea 9). No requiere tarea propia en Fase 2.
 - **`docx`/`openpyxl`:** confirmar versiones contra `pyproject.toml`.

@@ -906,6 +906,22 @@ def _run_deterministic(brief: Brief, description: str) -> list[RequirementResult
     return out
 
 
+def evaluate(
+    brief: Brief, metadata: VideoMetadata, transcript: Optional[Transcript], *, llm_check: LLMCheck
+) -> Verification:
+    """Núcleo de verificación SIN fetch: recibe metadata y transcript ya obtenidos.
+    Reutilizable para verificar varias campañas con un mismo transcript (Fase 3)."""
+    results = _run_deterministic(brief, metadata.description)
+    has_llm = any(r.method == "llm" for r in brief.requirements)
+    if has_llm:
+        if transcript is None:
+            # Sin transcript no se pueden correr R3/R4 -> a revisión humana.
+            return Verification(overall_status="review", results=results)
+        results += llm_check(brief, transcript.full_text())
+    status = decide(results, brief.requirements)
+    return Verification(overall_status=status, results=results)
+
+
 def verify_video(
     video_id: str,
     brief: Brief,
@@ -915,21 +931,12 @@ def verify_video(
     llm_check: LLMCheck,
 ) -> Verification:
     metadata = metadata_client(video_id)
-    results = _run_deterministic(brief, metadata.description)
-
     has_llm = any(r.method == "llm" for r in brief.requirements)
-    if has_llm:
-        transcript: Optional[Transcript] = transcript_provider.get_transcript(video_id)
-        if transcript is None:
-            # Sin transcript no se pueden correr R3/R4 -> a revisión humana.
-            return Verification(overall_status="review", results=results)
-        results += llm_check(brief, transcript.full_text())
-
-    status = decide(results, brief.requirements)
-    return Verification(overall_status=status, results=results)
+    transcript = transcript_provider.get_transcript(video_id) if has_llm else None
+    return evaluate(brief, metadata, transcript, llm_check=llm_check)
 ```
 
-> Nota: en el test, `llm_check` se inyecta como `Callable[[Brief, str], list[RequirementResult]]`. En producción se pasa una lambda que cierra sobre el cliente OpenAI: `lambda b, t: check_requirements_llm(b, t, client=openai_client, model=MODEL)` (ver Tarea 8).
+> Nota: `verify_video` hace el fetch y delega en `evaluate`. La Fase 3 reutiliza `evaluate` para verificar **varias campañas con un mismo transcript** (el transcript se baja una sola vez). En el test, `llm_check` se inyecta como `Callable[[Brief, str], list[RequirementResult]]`; en producción se pasa `lambda b, t: check_requirements_llm(b, t, client=openai_client, model=MODEL)` (ver Tarea 8).
 
 - [ ] **Step 4: Correr el test para ver que pasa**
 
