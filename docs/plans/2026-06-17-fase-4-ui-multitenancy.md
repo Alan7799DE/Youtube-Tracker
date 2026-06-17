@@ -298,7 +298,7 @@ git commit -m "feat: cliente Supabase y tipos de tablas"
 
 ```ts
 import { describe, it, expect } from "vitest";
-import { channelStatusBadge } from "./status";
+import { channelStatusBadge, dashboardRowBadge } from "./status";
 
 describe("channelStatusBadge", () => {
   it("verified -> Cumple/success", () => {
@@ -312,6 +312,18 @@ describe("channelStatusBadge", () => {
   });
   it("pending -> Pendiente/neutral", () => {
     expect(channelStatusBadge("pending")).toEqual({ label: "Pendiente", tone: "neutral" });
+  });
+});
+
+describe("dashboardRowBadge", () => {
+  it("muestra 'En revisión' cuando hay un video en review y sigue pending", () => {
+    expect(dashboardRowBadge("pending", true)).toEqual({ label: "En revisión", tone: "info" });
+  });
+  it("usa el estado del canal-campaña si no hay review pendiente", () => {
+    expect(dashboardRowBadge("verified", false)).toEqual({ label: "Cumple", tone: "success" });
+  });
+  it("un estado terminal gana sobre el review", () => {
+    expect(dashboardRowBadge("verified", true)).toEqual({ label: "Cumple", tone: "success" });
   });
 });
 ```
@@ -339,12 +351,21 @@ const MAP: Record<ChannelCampaignStatus, Badge> = {
 export function channelStatusBadge(status: ChannelCampaignStatus): Badge {
   return MAP[status];
 }
+
+export const REVIEW_BADGE: Badge = { label: "En revisión", tone: "info" };
+
+// El dashboard muestra 5 estados: si el canal-campaña sigue 'pending' pero tiene
+// un video esperando revisión humana, se muestra "En revisión" (derivado del video).
+export function dashboardRowBadge(status: ChannelCampaignStatus, hasVideoInReview: boolean): Badge {
+  if (status === "pending" && hasVideoInReview) return REVIEW_BADGE;
+  return channelStatusBadge(status);
+}
 ```
 
 - [ ] **Step 4: Correr el test para ver que pasa**
 
 Run: `cd frontend && npx vitest run src/lib/status.test.ts`
-Expected: PASS (4 tests).
+Expected: PASS (7 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -658,17 +679,21 @@ git commit -m "feat: autenticación con Supabase + login/registro"
 - [ ] **Step 1: Escribir el test que falla**
 
 ```tsx
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+
+vi.mock("../lib/supabase", () => ({ supabase: { auth: { signOut: vi.fn() } } }));
+
 import { AppShell } from "./AppShell";
 
 describe("AppShell", () => {
-  it("muestra los 4 menús principales", () => {
+  it("muestra los 4 menús principales y el botón de cerrar sesión", () => {
     render(<MemoryRouter><AppShell /></MemoryRouter>);
     for (const label of ["Dashboard", "Campañas", "Canales", "Revisión"]) {
       expect(screen.getByRole("link", { name: label })).toBeTruthy();
     }
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeTruthy();
   });
 });
 ```
@@ -682,6 +707,8 @@ Expected: FAIL (no existe `AppShell`).
 
 ```tsx
 import { Link, Outlet } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../auth/useAuth";
 
 const MENUS = [
   { to: "/", label: "Dashboard" },
@@ -691,6 +718,7 @@ const MENUS = [
 ];
 
 export function AppShell() {
+  const { user } = useAuth();
   return (
     <div style={{ display: "flex" }}>
       <nav aria-label="principal">
@@ -699,6 +727,10 @@ export function AppShell() {
             <li key={m.to}><Link to={m.to}>{m.label}</Link></li>
           ))}
         </ul>
+        <div aria-label="cuenta">
+          <span>{user?.email}</span>
+          <button type="button" onClick={() => supabase.auth.signOut()}>Cerrar sesión</button>
+        </div>
       </nav>
       <main><Outlet /></main>
     </div>
@@ -828,6 +860,7 @@ Cada vista se construye en dos pasos: **(a)** un test de la lógica/datos que fa
 - Grilla editable de canales (columnas: URL, handle/nombre, estado de resolución, activo). Filas agregables/eliminables a mano.
 - Botón "Importar archivo" (CSV/`.xlsx`): sube el archivo a `POST /api/channels/import` (Tarea 3) → la API parsea, reconcilia, resuelve y suscribe; al volver, se refresca la grilla.
 - Sección destacada de canales **no resueltos** (`resolution_status='unresolved'`) para corregir a mano.
+- **Historial de imports:** lista de las últimas corridas de `import_runs` (fecha, agregados/quitados/no resueltos) leída por RLS.
 - Reemplazo total: subir un archivo reemplaza el conjunto activo (la API hace la reconciliación con soft-deactivate; ver Fase 2).
 
 - [ ] **Step 1 (TDD lógica):** test de `ChannelsPage` que, con `listChannels` mockeado, renderiza una fila por canal y resalta los `unresolved`. Implementar el componente para que pase.
@@ -854,7 +887,7 @@ Cada vista se construye en dos pasos: **(a)** un test de la lógica/datos que fa
 
 **Especificación:**
 - Tarjetas de resumen: total, al día (`verified`), requieren atención (`incomplete`/`review`), pendientes.
-- Una fila por canal-campaña con su última publicación y el badge de estado (`channelStatusBadge`, Tarea 2). Para videos en `review`, mostrar ese estado (derivado del video).
+- Una fila por canal-campaña con su última publicación y el badge de estado vía `dashboardRowBadge(status, hasVideoInReview)` (Tarea 2): muestra los 5 estados (Cumple / Incompleto / En revisión / Pendiente / No cumplió), derivando "En revisión" del video.
 - Clic en una fila → `videos/:id`.
 
 - [ ] **Step 1 (TDD lógica):** test del cómputo de los contadores del resumen a partir de una lista de `campaign_channels`. Implementar una función pura `summarize(rows)` + render mínimo.
