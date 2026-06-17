@@ -1,6 +1,6 @@
 # Verificador de publicidad en YouTube
 
-Sistema que automatiza la verificación de acuerdos publicitarios con influencers de YouTube. Toma una lista de canales desde un Google Doc, detecta automáticamente cuándo esos creadores suben videos, y verifica si cumplen los requisitos publicitarios acordados con la marca.
+Sistema que automatiza la verificación de acuerdos publicitarios con influencers de YouTube. Toma una lista de canales (importada desde un archivo a una grilla editable), detecta automáticamente cuándo esos creadores suben videos, y verifica si cumplen los requisitos publicitarios acordados con la marca dentro de un plazo. Es multi-usuario: cada usuario ve solo lo suyo.
 
 Reemplaza la revisión manual perfil por perfil (incluso fines de semana) por un monitoreo automático con una interfaz web donde se ve el estado de cada canal.
 
@@ -16,10 +16,10 @@ Hoy la verificación es manual: alguien entra canal por canal a confirmar que ca
 
 Un pipeline automático que:
 
-1. **Entrada** — lee la lista de canales a monitorear desde un Google Doc (fuente de verdad).
+1. **Entrada** — importa la lista de canales desde un archivo (CSV/`.xlsx`) a una grilla editable, y carga el brief (texto/`.txt`/`.docx`) con extracción por LLM + confirmación. Sin Google APIs ni OAuth.
 2. **Detección** — se entera al instante de cada nuevo video vía WebSub (push de YouTube, sin polling).
-3. **Verificación** — obtiene metadata y transcript y compara contra el brief de la campaña, produciendo un veredicto estructurado y auditable.
-4. **Presentación** — una interfaz web que muestra el estado de cada canal y deriva a una persona solo los casos ambiguos.
+3. **Verificación** — obtiene metadata y transcript y compara contra el brief de la campaña, produciendo un veredicto estructurado y auditable, por campaña. El incumplimiento se marca por **plazo vencido**, no por video.
+4. **Presentación** — una interfaz web multi-usuario que muestra el estado de cada canal y deriva a una persona solo los casos ambiguos.
 
 ## Qué se verifica
 
@@ -39,9 +39,9 @@ Un pipeline automático que:
 
 | Capa | Elección |
 |------|----------|
-| Interfaz web | Lovable (React + Supabase) — solo lee y muestra |
+| Interfaz web | React + Vite + `@supabase/supabase-js` (construida con Claude Code) — solo lee y muestra |
 | Backend / motor | Python (FastAPI + workers) vía Claude Code |
-| Entrada | Google Docs/Drive API |
+| Entrada | Subida de archivos (CSV/`.xlsx` canales; `.txt`/`.docx`/texto brief) + extracción LLM |
 | Detección | YouTube WebSub + Data API v3 |
 | Transcript | `youtube-transcript-api` (MIT), detrás de interfaz abstracta |
 | LLM | API OpenAI con structured output |
@@ -50,14 +50,14 @@ Un pipeline automático que:
 
 ## Arquitectura en una línea
 
-**Lovable construye lo que se ve y se configura; el backend (Python) construye el motor que corre solo.** Se encuentran en la base de datos de Supabase, que actúa como contrato compartido entre ambos.
+**Todo se construye con Claude Code.** El frontend (React) lee y muestra; el backend (Python) corre el motor de verificación. Se encuentran en la base de datos de Supabase, que actúa como contrato compartido entre ambos.
 
 ## Plan de implementación por fases
 
 1. **Núcleo de verificación** — input manual (URL de video): ingesta + verificación + persistencia. Validar lo difícil (transcript + LLM + decisión) contra un set dorado.
-2. **Entrada por Google Docs** — lectura del doc, resolución nombre→`channel_id`, sincronización.
+2. **Entrada por archivo + grilla** — import de canales (CSV/`.xlsx`), resolución URL→`channel_id`, reconciliación; carga del brief con extracción LLM. Plazo por campaña.
 3. **Detección automática (WebSub)** — suscripción por canal, dedup, renovación de leases, worker de transcript con backoff.
-4. **Interfaz web (Lovable)** — las tres vistas sobre el esquema de Supabase, con auth.
+4. **Interfaz web + multi-tenancy (Claude Code)** — las vistas en React sobre el esquema de Supabase, con auth + organización personal y RLS por org.
 5. **Salida, notificaciones y evaluación** — cola de revisión, alertas, harness de evaluación.
 6. **Robustez y escala** (cuando haya mercado) — proxies residenciales o API de transcript de terceros; opcionalmente visión para R5.
 
