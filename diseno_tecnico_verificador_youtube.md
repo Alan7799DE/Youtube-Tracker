@@ -223,7 +223,7 @@ Mapeo, con precedencia `verified > incomplete > pending` (gana el mejor intento)
 - Verificación `fail` (es la publi, le falta algo) → `incomplete`. **Modelo indulgente:** mientras la ventana siga abierta, todavía puede pasar a `verified` si re-suben un video corregido.
 - Verificación `review` (R5 / baja confianza) → sigue `pending`, va a la cola humana; si confirma → `verified`, si rechaza → `incomplete`.
 
-**Job "revisor de plazos".** Periódicamente busca campañas con `ends_at` vencido y marca como `failed` todo `campaign_channel` que siga `pending` (nunca subió). Los `incomplete` quedan `incomplete` (subir incompleto ≠ no subir).
+**Job "revisor de plazos".** Periódicamente busca campañas con `ends_at` vencido y marca como `failed` los `campaign_channel` en `pending` **para los que no existe ninguna verificación** (canal+campaña) — es decir, donde de verdad nunca apareció la publi. **Ojo:** si hay una publi en `review` (esperando confirmación humana), el `campaign_channel` también está en `pending` pero **no** se marca `failed` —sí subió la publi—; queda esperando la decisión humana, que puede resolverse incluso pasado el plazo. Los `incomplete` quedan `incomplete` (subir incompleto ≠ no subir).
 
 Separar `awaiting_transcript` de `verifying` evita verificar antes de tiempo. El worker consulta videos con `next_retry_at <= now()` y los reprocesa.
 
@@ -505,7 +505,7 @@ El frontend es React (construido con Claude Code), se sirve estáticamente y hab
 5. Para R3/R4 se necesita el transcript, que puede no estar listo: el video pasa a `awaiting_transcript` y se reintenta con backoff hasta obtenerlo estable o agotar 24 h (`needs_human`).
 6. Con transcript estable (`verifying`), se lo une en texto y se corre **una verificación por campaña matcheada**; structured output devuelve el veredicto por requisito.
 7. La lógica de decisión arma el `overall_status` de cada `verification`, el video pasa a `resolved` y se actualiza el `campaign_channel`: `pass → verified`, `fail → incomplete`, `review → pendiente + cola humana`.
-8. Si un `campaign_channel` sigue `pending` cuando vence el plazo de la campaña → el "revisor de plazos" lo marca `failed`.
+8. Si un `campaign_channel` sigue `pending` cuando vence el plazo **y nunca apareció una publi** (no hay verificación) → el "revisor de plazos" lo marca `failed`. Si hay una publi en `review`, se respeta hasta que el humano decida.
 9. La persona revisa solo lo ambiguo (incluido confirmar gameplay, R5); su decisión se guarda y alimenta el set de evaluación. (Las notificaciones de `fail`/`review` quedan para Fase 5.)
 
 ---
