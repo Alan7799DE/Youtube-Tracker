@@ -269,13 +269,17 @@ Forzá el JSON con el modo de structured output / tool-use del proveedor. Pedí 
 ### 6.3 Lógica de decisión
 
 ```
-si algún requisito REQUERIDO determinístico falló  -> FAIL
-si todos los automatizables cumplen con confidence >= 0.8
-   y hay requisitos visuales pendientes (R5)        -> REVIEW (solo confirmar gameplay)
-si todos cumplen y no hay pendientes visuales       -> PASS
-si algún requisito LLM tiene confidence < 0.8        -> REVIEW
-en cualquier otro caso                               -> FAIL
+si un requisito HUMANO requerido fue revisado y NO cumple   -> FAIL   (el humano manda: máxima prioridad)
+si un requisito REQUERIDO determinístico no cumple           -> FAIL
+si un requisito LLM tiene confidence < 0.8                    -> REVIEW (ante la duda, primero)
+si un requisito LLM requerido no cumple (con confianza alta)  -> FAIL
+si queda un requisito visual/humano pendiente (sin revisar)  -> REVIEW (confirmar gameplay R5)
+en cualquier otro caso (todo cumple, nada pendiente)         -> PASS
 ```
+
+El orden importa y es el que aplica el código (`verifier/decision.py`): se evalúa de arriba hacia abajo y se devuelve el primer veredicto que dispara.
+
+**Prioridad del veredicto humano.** Si una persona revisó un requisito `human` requerido (p. ej. R5, gameplay) y lo marcó como **no cumplido**, el resultado es `FAIL` con prioridad sobre todas las demás reglas: el juicio humano es autoritativo y no puede ser sobrescrito por un `pass` determinístico ni por un `review` del LLM. Un requisito humano **sin revisar todavía** (sin resultado) sigue cayendo a `REVIEW`; uno marcado como cumplido no bloquea.
 
 Esta lógica produce el `overall_status` de **cada `verification`** (una por campaña matcheada). Ese veredicto se mapea al estado del `campaign_channel` según la sección 5.5: `pass → verified`, `fail → incomplete`, `review → queda pendiente / cola humana`.
 

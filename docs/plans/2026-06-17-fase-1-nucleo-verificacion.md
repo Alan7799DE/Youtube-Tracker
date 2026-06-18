@@ -1251,3 +1251,17 @@ git commit -m "feat: persistencia de verificación en Supabase (opcional)"
 - **Bloqueo de IP del transcript:** correr la validación desde una IP residencial (local). En cloud esperá bloqueos intermitentes (diseño 5.2).
 - **`response_format` de OpenAI:** confirmar que el modelo elegido soporta structured output con `beta.chat.completions.parse` y un modelo pydantic; ajustar si la versión del SDK difiere.
 - **Set dorado:** hay que armarlo con videos reales etiquetados a mano (30–50). `golden/example.json` es solo la forma del archivo.
+
+---
+
+## Notas post-implementación (Fase 1 construida)
+
+Lo que efectivamente cambió respecto del código de ejemplo de arriba al implementar (PR #8, branch `feat/fase-1-nucleo-verificacion`). Los snippets de este plan se dejan como estaban (registro histórico); la fuente de verdad es el código en `backend/`.
+
+- **`youtube-transcript-api` 1.2.4 (no 0.6.x):** la 1.x cambió a API de instancia. `transcript.py` usa `YouTubeTranscriptApi().fetch(video_id, languages=[...])` (no el `get_transcript` estático del plan) y los snippets son objetos con atributos `.text/.start/.duration` (no dicts). El test mockea `...YouTubeTranscriptApi.fetch`.
+- **`openai` 2.43.0:** se mantiene `client.beta.chat.completions.parse` (funciona en 2.43.0; el cliente se inyecta y se mockea en tests). Queda como follow-up migrar al path estable `chat.completions.parse`.
+- **Fix de falso PASS (expected vacío):** en `checks/deterministic.py`, un `expected_link`/`code` vacío o ausente daba `met=True` (`"" in s` es siempre `True`). Corregido con `met = bool(expected) and expected in _normalize(description)` + tests de regresión.
+- **Prioridad del veredicto humano (decisión de diseño):** `decision.py` incorpora una **regla 0**: un requisito `human` requerido revisado con `met=False` da `FAIL` con prioridad sobre todas las demás reglas. Ver diseño 6.3 actualizado. Cierra el falso PASS por la vía de revisión humana.
+- **Cobertura de tests:** 53 tests en total (núcleo + casos borde + regresiones), todos sin red.
+
+**Follow-ups menores anotados:** (a) los códigos (`code_in_desc`) matchean por substring — `"rpg"` cae dentro de `"rpgenuino"`; evaluar límite de palabra. (b) Cuando un determinístico requerido ya falló, el orquestador igual baja transcript y llama al LLM (gasto evitable con un short-circuit).
