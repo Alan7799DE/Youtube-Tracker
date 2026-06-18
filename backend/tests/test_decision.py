@@ -59,3 +59,35 @@ def test_llm_not_met_low_confidence_is_review():
         RequirementResult(requirement_code="R3", met=False, confidence=0.4, method="llm"),
     ]
     assert decide(results, reqs) == "review"
+
+
+def test_human_required_not_met_is_fail():
+    # El veredicto humano manda: si una persona marca un requisito requerido como
+    # NO cumplido, el resultado global es FAIL (aunque todo lo demás cumpla).
+    reqs = [LINK, PLAY]
+    results = [
+        RequirementResult(requirement_code="R1", met=True, method="deterministic"),
+        RequirementResult(requirement_code="R5", met=False, method="human"),
+    ]
+    assert decide(results, reqs) == "fail"
+
+
+def test_human_fail_has_priority_over_llm_review():
+    # El humano tiene prioridad sobre las demás reglas: su FAIL gana incluso frente
+    # a un LLM de baja confianza que, solo, mandaría a REVIEW.
+    reqs = [GAME, PLAY]
+    results = [
+        RequirementResult(requirement_code="R3", met=True, confidence=0.4, method="llm"),
+        RequirementResult(requirement_code="R5", met=False, method="human"),
+    ]
+    assert decide(results, reqs) == "fail"
+
+
+def test_human_met_true_does_not_block_pass():
+    # Un veredicto humano POSITIVO con resultado no bloquea: si todo cumple -> PASS.
+    reqs = [LINK, PLAY]
+    results = [
+        RequirementResult(requirement_code="R1", met=True, method="deterministic"),
+        RequirementResult(requirement_code="R5", met=True, method="human"),
+    ]
+    assert decide(results, reqs) == "pass"

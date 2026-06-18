@@ -8,6 +8,13 @@ def decide(results: list[RequirementResult], requirements: list[Requirement]) ->
     by_code = {r.code: r for r in requirements}
     res_by_code = {r.requirement_code: r for r in results}
 
+    # 0. El veredicto humano manda: si un requisito humano REQUERIDO fue revisado
+    #    y NO cumple, el resultado es FAIL con prioridad sobre todas las demás reglas.
+    for r in results:
+        req = by_code.get(r.requirement_code)
+        if req and req.required and r.method == "human" and not r.met:
+            return "fail"
+
     # 1. Si algún requisito determinístico REQUERIDO falló -> FAIL
     for r in results:
         req = by_code.get(r.requirement_code)
