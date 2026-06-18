@@ -34,7 +34,7 @@ backend/
       leases.py        # renovación de suscripciones por vencer
       deadlines.py     # revisor de plazos (pending sin verificación -> failed)
     association.py     # video -> campaña(s) por link/código en la descripción
-    verify_multi.py    # verifica varias campañas reutilizando un transcript (usa evaluate de Fase 1)
+    verify_multi.py    # verifica varias campañas reutilizando un transcript (usa evaluate_brief de Fase 1)
     channel_status.py  # mapeo veredicto -> estado del campaign_channel (precedencia)
   tests/
     test_websub_subscribe.py
@@ -895,7 +895,7 @@ git commit -m "feat: revisor de plazos (pending sin verificación -> failed)"
 
 ## Tarea 10: Verificación multi-campaña reutilizando el transcript
 
-Un video puede ser la publi de varias campañas (diseño 5.5): se baja el transcript **una sola vez** y se verifica contra cada brief. Reusa `evaluate` de la Fase 1 (núcleo sin fetch).
+Un video puede ser la publi de varias campañas (diseño 5.5): se baja el transcript **una sola vez** y se verifica contra cada brief. Reusa `evaluate_brief` de la Fase 1 (núcleo sin fetch).
 
 **Files:**
 - Create: `backend/verifier/verify_multi.py`
@@ -944,7 +944,7 @@ Expected: FAIL con `ModuleNotFoundError`.
 from __future__ import annotations
 from typing import Callable
 from verifier.models import Brief, Verification, VideoMetadata
-from verifier.verify import evaluate, MetadataClient, LLMCheck
+from verifier.verify import evaluate_brief, MetadataClient, LLMCheck
 
 
 def verify_campaigns(
@@ -961,7 +961,7 @@ def verify_campaigns(
     )
     transcript = transcript_provider.get_transcript(video_id) if needs_transcript else None
     return {
-        campaign_id: evaluate(brief, metadata, transcript, llm_check=llm_check)
+        campaign_id: evaluate_brief(brief, metadata, transcript, llm_check=llm_check)
         for campaign_id, brief in briefs_by_campaign.items()
     }
 ```

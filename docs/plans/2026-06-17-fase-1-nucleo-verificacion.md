@@ -889,7 +889,6 @@ from __future__ import annotations
 from typing import Callable, Optional
 from verifier.models import Brief, Verification, VideoMetadata, Transcript, RequirementResult
 from verifier.checks.deterministic import check_link_in_desc, check_code_in_desc
-from verifier.checks.llm import check_requirements_llm
 from verifier.decision import decide
 
 MetadataClient = Callable[[str], VideoMetadata]
@@ -906,7 +905,7 @@ def _run_deterministic(brief: Brief, description: str) -> list[RequirementResult
     return out
 
 
-def evaluate(
+def evaluate_brief(
     brief: Brief, metadata: VideoMetadata, transcript: Optional[Transcript], *, llm_check: LLMCheck
 ) -> Verification:
     """Núcleo de verificación SIN fetch: recibe metadata y transcript ya obtenidos.
@@ -933,10 +932,10 @@ def verify_video(
     metadata = metadata_client(video_id)
     has_llm = any(r.method == "llm" for r in brief.requirements)
     transcript = transcript_provider.get_transcript(video_id) if has_llm else None
-    return evaluate(brief, metadata, transcript, llm_check=llm_check)
+    return evaluate_brief(brief, metadata, transcript, llm_check=llm_check)
 ```
 
-> Nota: `verify_video` hace el fetch y delega en `evaluate`. La Fase 3 reutiliza `evaluate` para verificar **varias campañas con un mismo transcript** (el transcript se baja una sola vez). En el test, `llm_check` se inyecta como `Callable[[Brief, str], list[RequirementResult]]`; en producción se pasa `lambda b, t: check_requirements_llm(b, t, client=openai_client, model=MODEL)` (ver Tarea 8).
+> Nota: `verify_video` hace el fetch y delega en `evaluate_brief`. La Fase 3 reutiliza `evaluate_brief` para verificar **varias campañas con un mismo transcript** (el transcript se baja una sola vez). En el test, `llm_check` se inyecta como `Callable[[Brief, str], list[RequirementResult]]`; en producción se pasa `lambda b, t: check_requirements_llm(b, t, client=openai_client, model=MODEL)` (ver Tarea 8).
 
 - [ ] **Step 4: Correr el test para ver que pasa**
 
