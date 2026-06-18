@@ -1,8 +1,11 @@
 from __future__ import annotations
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 from verifier.models import Brief, Verification, VideoMetadata, Transcript, RequirementResult
 from verifier.checks.deterministic import check_link_in_desc, check_code_in_desc
 from verifier.decision import decide
+
+if TYPE_CHECKING:
+    from verifier.transcript import TranscriptProvider
 
 MetadataClient = Callable[[str], VideoMetadata]
 LLMCheck = Callable[[Brief, str], list[RequirementResult]]
@@ -39,7 +42,7 @@ def verify_video(
     brief: Brief,
     *,
     metadata_client: MetadataClient,
-    transcript_provider,
+    transcript_provider: "TranscriptProvider",
     llm_check: LLMCheck,
 ) -> Verification:
     metadata = metadata_client(video_id)

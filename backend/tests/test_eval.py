@@ -1,4 +1,4 @@
-from verifier.models import Verification, RequirementResult
+from verifier.models import Verification
 from verifier.eval import evaluate, GoldenCase, Brief
 
 

@@ -1,5 +1,5 @@
 from verifier.models import (
-    Requirement, Brief, VideoMetadata, TranscriptSegment, Transcript,
+    Requirement, Brief, TranscriptSegment, Transcript,
     RequirementResult, Verification,
 )
 
