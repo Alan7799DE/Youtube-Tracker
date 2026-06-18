@@ -4,7 +4,7 @@ Sistema que automatiza la verificación de acuerdos publicitarios con influencer
 
 Reemplaza la revisión manual perfil por perfil (incluso fines de semana) por un monitoreo automático con una interfaz web donde se ve el estado de cada canal.
 
-> ⚠️ **Estado actual: planificación.** Este repositorio contiene por ahora el diseño técnico y el esquema de base de datos. Todavía no hay código de implementación.
+> 🚧 **Estado actual: en desarrollo (backend).** Implementadas las **Fases 1–3** en [`backend/`](backend/) con tests: núcleo de verificación (Fase 1), resolución de canales (Fase 2) y detección automática WebSub + cron tick (Fase 3). Pendientes: interfaz web y multi-tenancy (Fase 4) y salida/notificaciones/evaluación (Fase 5). El diseño técnico y el esquema de base de datos siguen siendo la referencia.
 
 ---
 
@@ -63,7 +63,9 @@ Un pipeline automático que:
 
 ## Contenido del repositorio
 
-| Archivo | Descripción |
+| Archivo / carpeta | Descripción |
 |---------|-------------|
 | [`diseno_tecnico_verificador_youtube.md`](diseno_tecnico_verificador_youtube.md) | Documento de diseño técnico completo (arquitectura, flujos, decisiones, riesgos). |
-| [`schema.sql`](schema.sql) | Esquema de base de datos ejecutable para Supabase/PostgreSQL (13 tablas + RLS + triggers). |
+| [`schema.sql`](schema.sql) | Esquema de base de datos ejecutable para Supabase/PostgreSQL (14 tablas + RLS + triggers). |
+| [`backend/`](backend/) | Motor de verificación en Python (paquete `verifier/`) con su suite de tests. Implementa las Fases 1–3. |
+| [`docs/`](docs/) | Planes de implementación por fase ([`docs/plans/`](docs/plans/)) y requisitos externos y de despliegue. |
