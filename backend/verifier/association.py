@@ -11,12 +11,10 @@ class CandidateCampaign(BaseModel):
 
 def _is_ad_for(description: str, brief: Brief) -> bool:
     for req in brief.requirements:
-        if req.type == "link_in_desc":
-            if check_link_in_desc(description, req.spec.get("expected_link", "")).met:
-                return True
-        elif req.type == "code_in_desc":
-            if check_code_in_desc(description, req.spec.get("code", "")).met:
-                return True
+        if req.type == "link_in_desc" and check_link_in_desc(description, req.spec.get("expected_link", "")).met:
+            return True
+        if req.type == "code_in_desc" and check_code_in_desc(description, req.spec.get("code", "")).met:
+            return True
     return False
 
 

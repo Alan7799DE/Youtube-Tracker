@@ -19,7 +19,6 @@ def renew_expiring_leases(
     renewed = 0
     cutoff = now + within
     for ch in channels:
-        if ch.lease_expires_at <= cutoff:
-            if resubscribe(ch):
-                renewed += 1
+        if ch.lease_expires_at <= cutoff and resubscribe(ch):
+            renewed += 1
     return renewed

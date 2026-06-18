@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Callable
 from verifier.models import Brief, Verification, VideoMetadata
 from verifier.verify import evaluate_brief, MetadataClient, LLMCheck
 
