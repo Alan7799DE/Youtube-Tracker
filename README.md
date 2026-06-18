@@ -39,14 +39,14 @@ Un pipeline automático que:
 
 | Capa | Elección |
 |------|----------|
-| Interfaz web | React + Vite + `@supabase/supabase-js` (construida con Claude Code) — solo lee y muestra |
+| Interfaz web | React + Vite + `@supabase/supabase-js` (construida con Claude Code) — gestiona la config y muestra los resultados |
 | Backend / motor | Python (FastAPI + workers) vía Claude Code |
 | Entrada | Subida de archivos (CSV/`.xlsx` canales; `.txt`/`.docx`/texto brief) + extracción LLM |
 | Detección | YouTube WebSub + Data API v3 |
 | Transcript | `youtube-transcript-api` (MIT), detrás de interfaz abstracta |
 | LLM | API OpenAI con structured output |
 | Persistencia | Supabase (PostgreSQL) — contrato compartido backend ↔ UI |
-| Notificaciones | WhatsApp / email |
+| Notificaciones | WhatsApp / email (Fase 5; diferido) |
 
 ## Arquitectura en una línea
 
@@ -54,7 +54,7 @@ Un pipeline automático que:
 
 ## Plan de implementación por fases
 
-1. **Núcleo de verificación** — input manual (URL de video): ingesta + verificación + persistencia. Validar lo difícil (transcript + LLM + decisión) contra un set dorado.
+1. **Núcleo de verificación** — input manual (URL de video + brief): ingesta + verificación + persistencia. Validar lo difícil (transcript + LLM + decisión) contra un set dorado.
 2. **Entrada por archivo + grilla** — import de canales (CSV/`.xlsx`), resolución URL→`channel_id`, reconciliación; carga del brief con extracción LLM. Plazo por campaña.
 3. **Detección automática (WebSub)** — suscripción por canal, dedup, renovación de leases, worker de transcript con backoff.
 4. **Interfaz web + multi-tenancy (Claude Code)** — las vistas en React sobre el esquema de Supabase, con auth + organización personal y RLS por org.
