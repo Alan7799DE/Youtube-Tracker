@@ -7,7 +7,8 @@ def _normalize(text: str) -> str:
 
 
 def check_link_in_desc(description: str, expected_link: str, code: str = "R1") -> RequirementResult:
-    met = _normalize(expected_link) in _normalize(description)
+    expected = _normalize(expected_link)
+    met = bool(expected) and expected in _normalize(description)
     return RequirementResult(
         requirement_code=code,
         met=met,
@@ -17,7 +18,8 @@ def check_link_in_desc(description: str, expected_link: str, code: str = "R1") -
 
 
 def check_code_in_desc(description: str, expected_code: str, code: str = "R2") -> RequirementResult:
-    met = _normalize(expected_code) in _normalize(description)
+    expected = _normalize(expected_code)
+    met = bool(expected) and expected in _normalize(description)
     return RequirementResult(
         requirement_code=code,
         met=met,

@@ -23,7 +23,8 @@ def main(argv: list[str] | None = None) -> int:
     model = os.environ.get("LLM_MODEL", "gpt-4o-mini")
     openai_client = OpenAI()  # toma OPENAI_API_KEY del entorno
 
-    brief = Brief.model_validate_json(open(args.brief, encoding="utf-8").read())
+    with open(args.brief, encoding="utf-8") as f:
+        brief = Brief.model_validate_json(f.read())
 
     verification = verify_video(
         args.video_id,

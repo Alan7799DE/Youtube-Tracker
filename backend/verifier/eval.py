@@ -21,7 +21,8 @@ Runner = Callable[[str, Brief], Verification]
 
 
 def load_golden(path: str) -> list[GoldenCase]:
-    data = json.loads(open(path, encoding="utf-8").read())
+    with open(path, encoding="utf-8") as f:
+        data = json.loads(f.read())
     return [GoldenCase.model_validate(c) for c in data]
 
 
