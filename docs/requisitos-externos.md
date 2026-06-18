@@ -18,7 +18,7 @@ Corre **local** (máquina del usuario, IP residencial). No necesita Supabase tod
 
 ---
 
-## 🟡 Fases 2–3 — Entrada por archivo y detección (WebSub)
+## 🟡 Fases 2–3 — Resolución de canales y detección (WebSub)
 
 - [ ] **Proyecto de Supabase** — [supabase.com](https://supabase.com) → crear proyecto.
 - [ ] **Correr `schema.sql`** en el SQL Editor de Supabase (crea las 14 tablas + RLS + triggers).
@@ -30,19 +30,19 @@ Corre **local** (máquina del usuario, IP residencial). No necesita Supabase tod
 
 ## 🔵 Fase 4 — Interfaz web + multi-tenancy
 
+> El frontend habla **solo con Supabase** (no hay API backend), así que no hacen falta JWT en el backend, CORS ni `VITE_BACKEND_URL`.
+
 - [ ] **`anon` key de Supabase** (Settings → API) — para el frontend. → `frontend/.env`: `VITE_SUPABASE_ANON_KEY`
-- [ ] **JWT Secret de Supabase** (Settings → API → JWT Settings) — para validar tokens en la API backend. → `backend/.env`: `SUPABASE_JWT_SECRET`
 - [ ] **Habilitar Email Auth** en Supabase (Authentication → Providers → Email). Para testear rápido se puede desactivar la confirmación por email.
-- [ ] **URL del backend** (para que el frontend llame a la API). → `frontend/.env`: `VITE_BACKEND_URL`
-- [ ] **Database webhook** en Supabase: en `channels` (insert) → endpoint de resolución del backend (resolución event-driven). Se configura cuando el backend esté desplegado.
-- [ ] **CORS** del backend habilitado para el origen del frontend.
 
 ---
 
 ## ⚪ Despliegue (cuando se salga de local)
 
-- [ ] **Hosting del frontend** — Vercel / Netlify / Cloudflare Pages (free tier).
-- [ ] **Hosting del backend** — Railway / Render / VPS (con URL pública + TLS para el WebSub).
+- [ ] **Hosting del frontend** — servido desde el **VPS con Caddy** (recomendado; mismo dominio que la API → sin CORS). Vercel/Netlify queda como opcional.
+- [ ] **Hosting del backend** — **VPS de Hostinger** (ya disponible), con Docker + URL pública + TLS para el WebSub.
+
+> El **cómo** del despliegue (Docker, Caddy, cron tick, checklist de infraestructura) está en [`requisitos-despliegue.md`](requisitos-despliegue.md).
 
 ---
 
@@ -51,20 +51,20 @@ Corre **local** (máquina del usuario, IP residencial). No necesita Supabase tod
 ### `backend/.env`
 | Variable | Para qué | Fase |
 |---|---|---|
-| `OPENAI_API_KEY` | LLM (verificación + extracción de brief) | 1 |
+| `OPENAI_API_KEY` | LLM de **verificación** (R3/R4) | 1 |
 | `YOUTUBE_API_KEY` | Metadata + resolución de canales | 1 |
 | `LLM_MODEL` | Modelo a usar (def. `gpt-4o-mini`) | 1 |
 | `SUPABASE_URL` | Conexión a la base | 2 |
 | `SUPABASE_SERVICE_ROLE_KEY` | Escritura backend (bypassea RLS) | 2 |
 | `WEBSUB_CALLBACK_URL` | Callback público de WebSub | 3 |
-| `SUPABASE_JWT_SECRET` | Validar tokens en la API | 4 |
 
 ### `frontend/.env`
 | Variable | Para qué | Fase |
 |---|---|---|
-| `VITE_SUPABASE_URL` | Conexión a la base (lectura RLS) | 4 |
+| `VITE_SUPABASE_URL` | Conexión a la base (lectura/escritura por RLS) | 4 |
 | `VITE_SUPABASE_ANON_KEY` | Cliente Supabase del frontend | 4 |
-| `VITE_BACKEND_URL` | Llamadas a la API backend | 4 |
+
+> El frontend no tiene `VITE_BACKEND_URL` porque no llama al backend; toda la config la escribe por RLS contra Supabase.
 
 ---
 
