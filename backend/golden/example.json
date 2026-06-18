@@ -1,0 +1,13 @@
+[
+  {
+    "video_id": "EXAMPLE_VIDEO_ID",
+    "expected_overall": "pass",
+    "brief": {
+      "game_name": "Mystic Realms",
+      "requirements": [
+        {"code": "R1", "type": "link_in_desc", "spec": {"expected_link": "https://dl.game/x"}, "method": "deterministic", "required": true},
+        {"code": "R3", "type": "mention_name", "spec": {"game_name": "Mystic Realms"}, "method": "llm", "required": true}
+      ]
+    }
+  }
+]
