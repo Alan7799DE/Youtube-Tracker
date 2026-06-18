@@ -1,0 +1,45 @@
+# Lock de versiones EXACTAS del entorno de Fase 1 (generado con `pip freeze`).
+# Reproduce el venv idéntico al que se usó para desarrollar y testear.
+#
+# La fuente de verdad de las dependencias es pyproject.toml (rangos >=).
+# Este archivo es solo para reconstruir el MISMO entorno bit a bit.
+#
+# Reconstruir el venv desde cero:
+#   cd backend
+#   python3 -m venv .venv && . .venv/bin/activate
+#   pip install -r requirements-lock.txt      # versiones exactas (este archivo)
+#   pip install -e . --no-deps                # instala el paquete `verifier` editable
+#
+# Alternativa (rangos de pyproject, trae las últimas compatibles):
+#   pip install -e ".[dev]"
+#
+# Regenerar este lock tras cambiar dependencias:
+#   pip freeze --exclude-editable | grep -v -i '^verifier' > requirements-lock.txt
+annotated-types==0.7.0
+anyio==4.14.0
+certifi==2026.6.17
+charset-normalizer==3.4.7
+defusedxml==0.7.1
+distro==1.9.0
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.18
+iniconfig==2.3.0
+jiter==0.15.0
+openai==2.43.0
+packaging==26.2
+pluggy==1.6.0
+pydantic==2.13.4
+pydantic_core==2.46.4
+Pygments==2.20.0
+pytest==9.1.0
+pytest-mock==3.15.1
+python-dotenv==1.2.2
+requests==2.34.2
+sniffio==1.3.1
+tqdm==4.68.3
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+urllib3==2.7.0
+youtube-transcript-api==1.2.4
