@@ -4,6 +4,7 @@
 # Entornos / secretos (para cuando empiece la implementación)
 .env
 .env.*
+!.env.example
 venv/
 .venv/
 __pycache__/
