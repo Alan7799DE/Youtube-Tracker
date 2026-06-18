@@ -411,6 +411,8 @@ El frontend es React (construido con Claude Code), se sirve estáticamente y hab
 
 **Recomendación: opción B.** Como en v1 el transcript se obtiene con la librería de Python, ya necesitás sí o sí un servicio Python. Tener *todo* el motor ahí (en vez de partirlo entre edge functions y un servicio Python) es más simple de razonar, testear y desplegar. Si más adelante conviene mover piezas puntuales a `pg_cron`/edge functions, se puede hacer sin reescribir el resto.
 
+**Despliegue:** el servicio corre en un **VPS de Hostinger**, empaquetado con **Docker** (`docker compose`: la API/WebSub detrás de **Caddy** con HTTPS automático, y los jobs como cron del VPS). La API autenticada y el callback de WebSub se sirven desde **una sola app ASGI** (`verifier/server.py`, que compone los routers). El frontend estático puede ir a un static host (Vercel/Netlify) o servirse desde el mismo VPS. El detalle está en `docs/requisitos-despliegue.md`.
+
 ---
 
 ## 11. Costos estimados

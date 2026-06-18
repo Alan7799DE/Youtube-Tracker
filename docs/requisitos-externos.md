@@ -42,7 +42,9 @@ Corre **local** (máquina del usuario, IP residencial). No necesita Supabase tod
 ## ⚪ Despliegue (cuando se salga de local)
 
 - [ ] **Hosting del frontend** — Vercel / Netlify / Cloudflare Pages (free tier).
-- [ ] **Hosting del backend** — Railway / Render / VPS (con URL pública + TLS para el WebSub).
+- [ ] **Hosting del backend** — **VPS de Hostinger** (ya disponible), con Docker + URL pública + TLS para el WebSub.
+
+> El **cómo** del despliegue (Docker, Caddy, cron, entrypoint único, checklist de infraestructura) está en [`requisitos-despliegue.md`](requisitos-despliegue.md).
 
 ---
 

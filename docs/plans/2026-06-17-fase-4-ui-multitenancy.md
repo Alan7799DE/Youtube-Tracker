@@ -475,13 +475,13 @@ def test_brief_extract_returns_draft(monkeypatch):
 from __future__ import annotations
 import os
 from typing import Optional
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import APIRouter, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from openai import OpenAI
 from verifier.api.auth import user_id_from_token
 from verifier.brief.extract import extract_brief
 
-app = FastAPI()
+router = APIRouter()
 JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
 
 
@@ -516,10 +516,16 @@ class BriefExtractRequest(BaseModel):
     text: str
 
 
-@app.post("/api/brief/extract")
+@router.post("/api/brief/extract")
 def brief_extract(body: BriefExtractRequest, authorization: Optional[str] = Header(default=None)) -> dict:
     org_id = _require_org(authorization)
     return extract_brief_text(body.text, org_id)
+
+
+# app local para testear este módulo en aislamiento; en producción se compone
+# junto con el router de WebSub en verifier/server.py (ver docs/requisitos-despliegue.md).
+app = FastAPI()
+app.include_router(router)
 ```
 
 > Nota: el endpoint de importación de canales (`POST /api/channels/import`) sigue el mismo patrón de auth y delega en `parse_channels_file` + `reconcile` + resolución/suscripción (Fases 2–3) usando el `org_id`; su cableado contra Supabase es integración. Se construye igual que `brief_extract`: `_require_org` → función reemplazable inyectada. Agregar su test análogo a `test_brief_extract_returns_draft`.

@@ -493,12 +493,12 @@ Expected: FAIL con `ModuleNotFoundError`.
 ```python
 from __future__ import annotations
 from typing import Optional
-from fastapi import FastAPI, Request, Response
+from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 from verifier.websub.callback import process_notification
 from verifier.websub.feed import VideoEvent
 
-app = FastAPI()
+router = APIRouter()
 
 
 def get_channel_secret(channel_id: str) -> Optional[str]:
@@ -512,13 +512,13 @@ def on_video(event: VideoEvent) -> None:
     return None
 
 
-@app.get("/websub/callback", response_class=PlainTextResponse)
+@router.get("/websub/callback", response_class=PlainTextResponse)
 def verify(request: Request) -> str:
     # El hub valida con un GET que incluye hub.challenge -> se devuelve tal cual.
     return request.query_params.get("hub.challenge", "")
 
 
-@app.post("/websub/callback")
+@router.post("/websub/callback")
 async def receive(request: Request) -> Response:
     body = await request.body()
     signature = request.headers.get("X-Hub-Signature")
@@ -529,6 +529,12 @@ async def receive(request: Request) -> Response:
     )
     # Siempre 204 rápido: no revelamos al hub si validó o no.
     return Response(status_code=204)
+
+
+# app local para testear este módulo en aislamiento; en producción se compone
+# junto con la API en verifier/server.py (ver docs/requisitos-despliegue.md).
+app = FastAPI()
+app.include_router(router)
 ```
 
 - [ ] **Step 4: Correr el test para ver que pasa**
