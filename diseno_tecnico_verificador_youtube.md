@@ -411,7 +411,7 @@ El frontend es React (construido con Claude Code), se sirve estáticamente y hab
 
 **Recomendación: opción B.** Como en v1 el transcript se obtiene con la librería de Python, ya necesitás sí o sí un servicio Python. Tener *todo* el motor ahí (en vez de partirlo entre edge functions y un servicio Python) es más simple de razonar, testear y desplegar. Si más adelante conviene mover piezas puntuales a `pg_cron`/edge functions, se puede hacer sin reescribir el resto.
 
-**Despliegue:** el servicio corre en un **VPS de Hostinger**, empaquetado con **Docker** (`docker compose`: la API/WebSub detrás de **Caddy** con HTTPS automático, y los jobs como cron del VPS). La API autenticada y el callback de WebSub se sirven desde **una sola app ASGI** (`verifier/server.py`, que compone los routers). El frontend estático puede ir a un static host (Vercel/Netlify) o servirse desde el mismo VPS. El detalle está en `docs/requisitos-despliegue.md`.
+**Despliegue:** el servicio corre en un **VPS de Hostinger**, empaquetado con **Docker** (`docker compose`: la API/WebSub detrás de **Caddy** con HTTPS automático, y los jobs como cron del VPS). La API autenticada y el callback de WebSub se sirven desde **una sola app ASGI** (`verifier/server.py`, que compone los routers). El frontend estático se **sirve desde el mismo VPS con Caddy** (mismo dominio → sin CORS); Vercel/Netlify queda como alternativa opcional. El detalle está en `docs/requisitos-despliegue.md`.
 
 ---
 
@@ -422,7 +422,7 @@ El frontend es React (construido con Claude Code), se sirve estáticamente y hab
 | Ítem | Costo aproximado | Nota |
 |---|---|---|
 | OpenAI API (verificación) | ~US$0.001–0.015 por video | GPT-4o-mini barato; modelo frontier ~15x más. Con 200 videos/mes: ~US$0.20–3/mes. Es lo MENOS relevante. |
-| Hosting del frontend | ~US$0 | React estático en Vercel / Netlify / Cloudflare Pages (free tier). |
+| Hosting del frontend | ~US$0 | React estático servido desde el VPS con Caddy (sin costo extra). Vercel/Netlify free tier como opcional. |
 | Supabase | Free tier o ~US$25/mes (Pro) | Pro incluye ~500k invocaciones de edge function/mes. |
 | Servicio Python (motor) | ~US$0–7/mes | Gratis en un VPS propio; US$5–7 en Railway/Render. |
 | Proxies residenciales | **Diferido** (~US$5–15/mes) | Solo cuando haya tracción; no en v1. |

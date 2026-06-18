@@ -5,7 +5,7 @@
 ## Dónde corre
 
 - **Backend (API + WebSub + jobs):** un **VPS de Hostinger** (siempre encendido, con URL pública e ingreso HTTPS). Se empaqueta con **Docker** para subirlo y actualizarlo fácil.
-- **Frontend (React):** se construye estático (`npm run build`). Recomendado servirlo desde un **static host gratis (Vercel / Netlify / Cloudflare Pages)**; alternativa: servirlo desde el mismo VPS con Caddy.
+- **Frontend (React):** se construye estático (`npm run build`) y se **sirve desde el mismo VPS con Caddy** (recomendado: un solo servidor, mismo dominio → sin CORS, sin sumar otro servicio). **Vercel/Netlify queda como alternativa opcional** si más adelante querés CDN global o preview deploys.
 
 ## Cuándo se materializa
 
@@ -18,22 +18,23 @@ El despliegue **no se necesita hasta la Fase 3**: las Fases 1 y 2 corren local (
                                    │  443
                           ┌────────▼─────────┐
                           │      caddy        │  reverse proxy + HTTPS automático (Let's Encrypt)
-                          └────────┬─────────┘
-                                   │
-                          ┌────────▼─────────┐
-                          │       api         │  uvicorn (FastAPI): /websub/callback + /api/*
-                          └───────────────────┘
+                          └───┬───────────┬───┘
+                              │           │
+                   ┌──────────▼──┐   ┌────▼──────────────┐
+                   │  frontend   │   │       api          │  uvicorn (FastAPI):
+                   │ (estático)  │   │ /websub/callback   │  /websub/callback + /api/*
+                   └─────────────┘   └────────────────────┘
    cron del VPS ──► python -m verifier.jobs.run <job>   (backoff transcript, leases, revisor de plazos)
                           (no exponen puertos; corren y terminan)
                                    │
                                    ▼
-                               Supabase (Postgres + Auth)  ── el frontend (static host) le pega directo por RLS
+                               Supabase (Postgres + Auth)  ── el frontend le pega directo por RLS
 ```
 
 - **Servicio `caddy`** — reverse proxy con **HTTPS automático**. Resuelve el TLS del callback de WebSub y de la API. Se le apunta un subdominio (ej. `api.tudominio.com`).
 - **Servicio `api`** — un único proceso uvicorn que sirve **el callback público de WebSub** (`/websub/callback`, sin auth) **y la API autenticada** (`/api/*`, con JWT). Ver "Entrypoint único" abajo.
 - **Jobs programados** — el worker de transcript (backoff), la renovación de leases y el revisor de plazos corren como **cron del VPS** que invoca entrypoints del paquete (`python -m verifier.jobs.run ...`). No reciben requests, no exponen puertos.
-- **Frontend** — estático en Vercel/Netlify (le pega a Supabase por RLS y a la API por `VITE_BACKEND_URL`).
+- **Frontend** — build estático servido por **Caddy desde el VPS** (le pega a Supabase por RLS y a la API por `VITE_BACKEND_URL`). Si se sirve bajo el mismo dominio que la API, **no hace falta CORS**. Opcional: hostearlo en un static host externo (Vercel/Netlify).
 
 ## Entrypoint único (consistencia con las Fases 3 y 4)
 
@@ -65,7 +66,7 @@ app.include_router(api_router)
 | `backend/Dockerfile` | Imagen del backend (Python 3.12 + deps + paquete `verifier`). |
 | `backend/.dockerignore` | Excluir `.venv`, `__pycache__`, `.env`, tests del build. |
 | `docker-compose.yml` | Servicios `api` + `caddy` (+ red + volúmenes de certificados). |
-| `Caddyfile` | Reverse proxy + HTTPS automático hacia `api`. |
+| `Caddyfile` | HTTPS automático: sirve el **frontend estático** y hace de reverse proxy de `/api/*` y `/websub/*` hacia `api`. |
 | `backend/verifier/server.py` | Entrypoint ASGI único (routers WebSub + API). |
 | `backend/verifier/jobs/run.py` | CLI para que el cron invoque cada job. |
 
@@ -78,13 +79,13 @@ app.include_router(api_router)
 - [ ] **Dominio o subdominio** apuntando a la IP del VPS (ej. `api.tudominio.com` para el backend).
 - [ ] **Puertos 80 y 443 abiertos** en el firewall del VPS (Caddy los usa para HTTPS).
 - [ ] **`.env` en el VPS** con las claves del backend (OpenAI, YouTube, Supabase URL/service_role/JWT) + `FRONTEND_ORIGIN` y `WEBSUB_CALLBACK_URL` (= `https://api.tudominio.com/websub/callback`).
-- [ ] **(Frontend) cuenta de Vercel/Netlify** si se hostea ahí (o servirlo desde Caddy).
+- [ ] **(Frontend) servido por Caddy desde el VPS** — el build (`npm run build`) se copia al server y Caddy lo sirve. Opcional: cuenta de Vercel/Netlify si preferís hostearlo afuera.
 
 ## Variables de entorno adicionales (despliegue)
 
 | Variable | Para qué | Dónde |
 |---|---|---|
-| `FRONTEND_ORIGIN` | CORS: origen permitido del frontend | `backend/.env` |
-| `WEBSUB_CALLBACK_URL` | URL pública del callback (subdominio + `/websub/callback`) | `backend/.env` |
+| `FRONTEND_ORIGIN` | CORS: origen del frontend. **Solo si está en otro dominio** (Vercel/subdominio distinto); sirviendo desde el mismo dominio que la API, no hace falta. | `backend/.env` |
+| `WEBSUB_CALLBACK_URL` | URL pública del callback (dominio + `/websub/callback`) | `backend/.env` |
 
 (El resto de las claves del backend y del frontend están en [`requisitos-externos.md`](requisitos-externos.md).)
