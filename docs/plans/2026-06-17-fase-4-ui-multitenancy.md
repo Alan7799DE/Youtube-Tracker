@@ -2,19 +2,19 @@
 
 > **Para workers agénticos:** SUB-SKILL REQUERIDO: usá `superpowers:subagent-driven-development` (recomendado) o `superpowers:executing-plans` para implementar este plan tarea por tarea. Los pasos usan checkboxes (`- [ ]`) para tracking. Para el pulido visual de cada vista, usá el skill `frontend-design`.
 
-**Goal:** una app web React multi-usuario donde cada persona se registra (con organización personal automática), importa canales, crea campañas con su brief, ve el estado de cada canal-campaña y resuelve la cola de revisión — leyendo de Supabase con RLS y delegando al backend las operaciones que necesitan secretos.
+**Goal:** una app web React multi-usuario donde cada persona se registra (con organización personal automática), importa canales, crea campañas con su brief, ve el estado de cada canal-campaña y resuelve la cola de revisión — hablando **únicamente con Supabase** (lee y escribe toda la config por RLS). **No hay API backend.**
 
-**Architecture:** frontend React + Vite + TypeScript que **lee** de Supabase con la *anon key* gobernada por RLS, y **escribe** la config sin efectos externos (campañas, requisitos, asignaciones, reviews) también vía RLS. Las operaciones con efectos externos o secretos —extracción del brief (LLM) y mutaciones de canales (resolución + WebSub)— pasan por una **API backend autenticada** (FastAPI) que reusa las funciones de las Fases 2–3. La organización personal se crea sola por el trigger del `schema.sql`.
+**Architecture:** frontend React + Vite + TypeScript que lee y escribe contra Supabase con la *anon key* gobernada por RLS. **Toda la config la escribe la UI por RLS** (campañas, requisitos, asignaciones, reviews, y las filas de canal). El **archivo de canales se parsea en el cliente** y la **reconciliación** del import se computa en el cliente; el **brief es un formulario manual** (sin subida de archivo ni LLM). La resolución de canales (`unresolved` → `channel_id`) y la suscripción WebSub las hace el **cron tick del backend** (Fases 2–3), de forma asíncrona. El frontend nunca llama al backend. La organización personal se crea sola por el trigger del `schema.sql`.
 
-**Tech Stack:** React 18, Vite, TypeScript, `@supabase/supabase-js` v2, `react-router-dom` v6, Vitest + `@testing-library/react` + jsdom. Backend: FastAPI + `pyjwt` (validación del JWT de Supabase). Pulido visual: skill `frontend-design`.
+**Tech Stack:** React 18, Vite, TypeScript, `@supabase/supabase-js` v2, `react-router-dom` v6, `xlsx` (SheetJS, parseo de CSV/`.xlsx` en el cliente), Vitest + `@testing-library/react` + jsdom. Pulido visual: skill `frontend-design`. **No hay backend nuevo en esta fase.**
 
 **Alcance (diseño, sección 15 · Fase 4 + sección 8):**
-- **Entra:** auth + organización personal, app shell con los 4 menús, dashboard, detalle de video, gestión de campañas (brief con extracción LLM + confirmación, asignación de canales, plazo), grilla de importación de canales, cola de revisión. Multi-tenancy efectiva (RLS por org ya en el schema).
-- **No entra:** notificaciones (Fase 5), robustez/escala (Fase 6). El cableado fino de resolución/WebSub vive en el backend (Fases 2–3) y se invoca desde la API.
+- **Entra:** auth + organización personal, app shell con los 4 menús, dashboard, detalle de video, gestión de campañas (brief por **formulario manual**, asignación de canales, plazo), grilla de importación de canales (parseo + reconciliación en el cliente), cola de revisión. Multi-tenancy efectiva (RLS por org ya en el schema).
+- **No entra:** notificaciones (Fase 5), robustez/escala (Fase 6). La resolución/WebSub la hace el cron tick (Fase 3), no la UI.
 
-**Prerrequisito:** Fases 1–3 implementadas; un proyecto Supabase con el `schema.sql` corrido; las API keys (OpenAI, YouTube) en el backend.
+**Prerrequisito:** Fases 1–3 implementadas; un proyecto Supabase con el `schema.sql` corrido.
 
-**Sobre el formato:** las tareas de **lógica** (mapeo de estados, auth, data layer, endpoints) van en TDD estricto con código real. Las tareas de **vistas visuales** dan una especificación concreta (datos, estados, acciones) + un test de lógica/smoke, y el armado visual fino se hace con el skill `frontend-design`. No usar placeholders en el código de lógica.
+**Sobre el formato:** las tareas de **lógica** (mapeo de estados, auth, data layer, parseo, reconciliación) van en TDD estricto con código real. Las tareas de **vistas visuales** dan una especificación concreta (datos, estados, acciones) + un test de lógica/smoke, y el armado visual fino se hace con el skill `frontend-design`. No usar placeholders en el código de lógica.
 
 ---
 
@@ -26,13 +26,14 @@ frontend/
   vite.config.ts
   tsconfig.json
   vitest.config.ts
-  .env.example                 # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_BACKEND_URL
+  .env.example                 # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
   src/
     lib/
       supabase.ts              # cliente supabase (anon)
       types.ts                 # tipos de las tablas del schema
       status.ts                # estado -> badge (label/tone)  [TDD]
-      api.ts                   # llamadas a la API backend (brief extract, channels)
+      parseChannels.ts         # archivo CSV/xlsx -> list[str] de URLs (cliente)  [TDD]
+      reconcile.ts             # (urls nuevas, existentes) -> plan add/keep/deactivate/reactivate  [TDD]
     auth/
       AuthProvider.tsx         # contexto de sesión (Supabase Auth)
       useAuth.ts
@@ -41,7 +42,7 @@ frontend/
       AppShell.tsx             # layout + barra lateral (4 menús + cuenta)
       router.tsx
     data/
-      channels.ts              # queries RLS de canales
+      channels.ts              # queries RLS de canales (read + write/reconcile)
       campaigns.ts             # queries RLS de campañas/requisitos/asignaciones
       videos.ts                # queries RLS de videos/verificaciones
       reviews.ts               # insert de review
@@ -53,16 +54,9 @@ frontend/
       VideoDetailPage.tsx
       ReviewQueuePage.tsx
   src/**/*.test.ts(x)          # Vitest
-
-backend/
-  verifier/api/
-    __init__.py
-    auth.py                    # JWT de Supabase -> org_id  [TDD]
-    app.py                     # FastAPI: /api/brief/extract, /api/channels/import  [TDD]
-  tests/
-    test_api_auth.py
-    test_api_app.py
 ```
+
+> **Sin backend nuevo en esta fase.** El frontend habla solo con Supabase (RLS). La resolución de canales y el WebSub los maneja el cron tick de la Fase 3.
 
 ---
 
@@ -87,7 +81,8 @@ backend/
     "@supabase/supabase-js": "^2.45.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "react-router-dom": "^6.26.0"
+    "react-router-dom": "^6.26.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.4.0",
@@ -147,7 +142,6 @@ export default defineConfig({
 ```bash
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
-VITE_BACKEND_URL=http://localhost:8000
 ```
 
 - [ ] **Step 6: Crear `frontend/index.html` y `frontend/src/main.tsx`**
@@ -376,171 +370,140 @@ git commit -m "feat: mapeo de estados a badges"
 
 ---
 
-## Tarea 3: API backend autenticada (FastAPI)
+## Tarea 3: Canales — parseo y reconciliación (en el cliente, TDD)
 
-Endpoints que el frontend invoca para lo que necesita secretos: extracción del brief (LLM) e importación de canales (resolución + WebSub). Autentica con el JWT de Supabase y deriva el `org_id` del usuario.
+El frontend parsea el archivo de canales y computa la reconciliación; después escribe por RLS (sin backend). Dos módulos puros, testeables con Vitest.
 
 **Files:**
-- Create: `backend/verifier/api/__init__.py`, `backend/verifier/api/auth.py`, `backend/verifier/api/app.py`
-- Test: `backend/tests/test_api_auth.py`, `backend/tests/test_api_app.py`
-- Modify: `backend/pyproject.toml` (agregar `pyjwt>=2.8`)
+- Create: `frontend/src/lib/parseChannels.ts`, `frontend/src/lib/reconcile.ts`
+- Test: `frontend/src/lib/parseChannels.test.ts`, `frontend/src/lib/reconcile.test.ts`
 
-- [ ] **Step 1: Agregar dep `pyjwt` y crear `__init__.py`**
+- [ ] **Step 1: Escribir el test de parseo que falla**
 
-En `backend/pyproject.toml` `dependencies`: `"pyjwt>=2.8",`. Crear `backend/verifier/api/__init__.py` vacío. Instalar: `cd backend && . .venv/bin/activate && pip install -e ".[dev]"`.
+```ts
+import { describe, it, expect } from "vitest";
+import { parseChannelsFile } from "./parseChannels";
 
-- [ ] **Step 2: Escribir el test de auth que falla**
-
-```python
-import jwt
-import pytest
-from verifier.api.auth import user_id_from_token
-
-SECRET = "test-secret"
-
-
-def test_decodes_valid_token():
-    token = jwt.encode({"sub": "user-123"}, SECRET, algorithm="HS256")
-    assert user_id_from_token(token, secret=SECRET) == "user-123"
-
-
-def test_invalid_token_raises():
-    with pytest.raises(ValueError):
-        user_id_from_token("garbage", secret=SECRET)
+describe("parseChannelsFile", () => {
+  it("toma la primera columna y saltea el header y las filas vacías", () => {
+    const csv = "url\nhttps://youtube.com/@a\n\nhttps://youtube.com/@b\n";
+    const buf = new TextEncoder().encode(csv).buffer;
+    expect(parseChannelsFile(buf)).toEqual(["https://youtube.com/@a", "https://youtube.com/@b"]);
+  });
+});
 ```
 
-- [ ] **Step 3: Implementar `backend/verifier/api/auth.py`**
+- [ ] **Step 2: Correr el test para ver que falla**
 
-```python
-from __future__ import annotations
-import jwt
+Run: `cd frontend && npx vitest run src/lib/parseChannels.test.ts`
+Expected: FAIL (no existe `parseChannels.ts`).
 
+- [ ] **Step 3: Implementar `frontend/src/lib/parseChannels.ts`**
 
-def user_id_from_token(token: str, *, secret: str) -> str:
-    try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
-    except jwt.PyJWTError as exc:
-        raise ValueError("token inválido") from exc
-    sub = payload.get("sub")
-    if not sub:
-        raise ValueError("token sin sub")
-    return sub
+```ts
+import * as XLSX from "xlsx";
+
+const HEADER = new Set(["url", "urls", "canal", "canales", "channel", "channels", "link", "links"]);
+
+// Lee CSV o .xlsx (SheetJS autodetecta) y devuelve la primera columna, sin header ni vacíos.
+export function parseChannelsFile(data: ArrayBuffer): string[] {
+  const wb = XLSX.read(data, { type: "array" });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, blankrows: false });
+  const out: string[] = [];
+  rows.forEach((row, i) => {
+    const v = String(row?.[0] ?? "").trim();
+    if (!v) return;
+    if (i === 0 && HEADER.has(v.toLowerCase())) return;
+    out.push(v);
+  });
+  return out;
+}
 ```
 
-- [ ] **Step 4: Correr el test de auth**
+- [ ] **Step 4: Correr el test para ver que pasa**
 
-Run: `pytest tests/test_api_auth.py -v`
-Expected: PASS (2 tests).
+Run: `cd frontend && npx vitest run src/lib/parseChannels.test.ts`
+Expected: PASS (1 test).
 
-- [ ] **Step 5: Escribir el test de la app que falla**
+- [ ] **Step 5: Escribir el test de reconciliación que falla**
 
-```python
-import jwt
-from fastapi.testclient import TestClient
-from verifier.api import app as appmod
+```ts
+import { describe, it, expect } from "vitest";
+import { reconcile } from "./reconcile";
 
-SECRET = "test-secret"
-
-
-def _token(user="u1"):
-    return jwt.encode({"sub": user}, SECRET, algorithm="HS256")
-
-
-def test_brief_extract_requires_auth():
-    client = TestClient(appmod.app)
-    resp = client.post("/api/brief/extract", json={"text": "x"})
-    assert resp.status_code == 401
-
-
-def test_brief_extract_returns_draft(monkeypatch):
-    monkeypatch.setattr(appmod, "JWT_SECRET", SECRET)
-    monkeypatch.setattr(appmod, "org_for_user", lambda uid: "org-1")
-    monkeypatch.setattr(
-        appmod, "extract_brief_text",
-        lambda text, org_id: {"game_name": "G", "requirements": []},
-    )
-    client = TestClient(appmod.app)
-    resp = client.post(
-        "/api/brief/extract",
-        json={"text": "Promociona G"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
-    assert resp.status_code == 200
-    assert resp.json()["game_name"] == "G"
+describe("reconcile", () => {
+  it("agrega, mantiene, desactiva y reactiva (case/slash-insensitive)", () => {
+    const newUrls = ["https://YouTube.com/@A/", "https://youtube.com/@c", "https://youtube.com/@d"];
+    const existing = [
+      { id: "1", source_url: "https://youtube.com/@a", is_active: true },
+      { id: "2", source_url: "https://youtube.com/@b", is_active: true },
+      { id: "4", source_url: "https://youtube.com/@d", is_active: false },
+    ];
+    const plan = reconcile(newUrls, existing);
+    expect(plan.toAdd).toEqual(["https://youtube.com/@c"]);
+    expect(plan.toKeep.map((c) => c.id)).toEqual(["1"]);
+    expect(plan.toDeactivate.map((c) => c.id)).toEqual(["2"]);
+    expect(plan.toReactivate.map((c) => c.id)).toEqual(["4"]);
+  });
+});
 ```
 
-- [ ] **Step 6: Implementar `backend/verifier/api/app.py`**
+- [ ] **Step 6: Correr el test para ver que falla**
 
-```python
-from __future__ import annotations
-import os
-from typing import Optional
-from fastapi import APIRouter, FastAPI, Header, HTTPException
-from pydantic import BaseModel
-from openai import OpenAI
-from verifier.api.auth import user_id_from_token
-from verifier.brief.extract import extract_brief
+Run: `cd frontend && npx vitest run src/lib/reconcile.test.ts`
+Expected: FAIL (no existe `reconcile.ts`).
 
-router = APIRouter()
-JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
+- [ ] **Step 7: Implementar `frontend/src/lib/reconcile.ts`**
 
+```ts
+export interface ExistingChannel { id: string; source_url: string; is_active: boolean; }
+export interface ReconcilePlan {
+  toAdd: string[];
+  toKeep: ExistingChannel[];
+  toDeactivate: ExistingChannel[];
+  toReactivate: ExistingChannel[];
+}
 
-def org_for_user(user_id: str) -> Optional[str]:
-    """Reemplazable: busca el org_id del usuario (organization_members) con service_role.
-    Se monkeypatcha en tests; en producción consulta Supabase."""
-    return None
+const norm = (u: string) => u.trim().toLowerCase().replace(/\/+$/, "");
 
+export function reconcile(newUrls: string[], existing: ExistingChannel[]): ReconcilePlan {
+  const newSet = new Set(newUrls.map(norm));
+  const existingNorms = new Set(existing.map((c) => norm(c.source_url)));
 
-def extract_brief_text(text: str, org_id: str) -> dict:
-    """Reemplazable: corre la extracción LLM. Se monkeypatcha en tests."""
-    client = OpenAI()
-    model = os.environ.get("LLM_MODEL", "gpt-4o-mini")
-    return extract_brief(text, client=client, model=model).model_dump()
+  const toAdd: string[] = [];
+  const seen = new Set<string>();
+  for (const u of newUrls) {
+    const n = norm(u);
+    if (!existingNorms.has(n) && !seen.has(n)) { seen.add(n); toAdd.push(u); }
+  }
 
-
-def _require_org(authorization: Optional[str]) -> str:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="falta token")
-    token = authorization.split(" ", 1)[1]
-    try:
-        user_id = user_id_from_token(token, secret=JWT_SECRET)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="token inválido")
-    org_id = org_for_user(user_id)
-    if org_id is None:
-        raise HTTPException(status_code=403, detail="usuario sin organización")
-    return org_id
-
-
-class BriefExtractRequest(BaseModel):
-    text: str
-
-
-@router.post("/api/brief/extract")
-def brief_extract(body: BriefExtractRequest, authorization: Optional[str] = Header(default=None)) -> dict:
-    org_id = _require_org(authorization)
-    return extract_brief_text(body.text, org_id)
-
-
-# app local para testear este módulo en aislamiento; en producción se compone
-# junto con el router de WebSub en verifier/server.py (ver docs/requisitos-despliegue.md).
-app = FastAPI()
-app.include_router(router)
+  const toKeep: ExistingChannel[] = [];
+  const toDeactivate: ExistingChannel[] = [];
+  const toReactivate: ExistingChannel[] = [];
+  for (const c of existing) {
+    const inNew = newSet.has(norm(c.source_url));
+    if (inNew && c.is_active) toKeep.push(c);
+    else if (inNew && !c.is_active) toReactivate.push(c);
+    else if (!inNew && c.is_active) toDeactivate.push(c);
+  }
+  return { toAdd, toKeep, toDeactivate, toReactivate };
+}
 ```
 
-> Nota: el endpoint de importación de canales (`POST /api/channels/import`) sigue el mismo patrón de auth y delega en `parse_channels_file` + `reconcile` + resolución/suscripción (Fases 2–3) usando el `org_id`; su cableado contra Supabase es integración. Se construye igual que `brief_extract`: `_require_org` → función reemplazable inyectada. Agregar su test análogo a `test_brief_extract_returns_draft`.
+- [ ] **Step 8: Correr el test para ver que pasa**
 
-- [ ] **Step 7: Correr los tests de la app**
+Run: `cd frontend && npx vitest run src/lib/reconcile.test.ts`
+Expected: PASS (1 test).
 
-Run: `pytest tests/test_api_app.py -v`
-Expected: PASS (2 tests).
-
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add backend/verifier/api/ backend/tests/test_api_auth.py backend/tests/test_api_app.py backend/pyproject.toml
-git commit -m "feat: API backend autenticada (brief extract) con JWT de Supabase"
+git add frontend/src/lib/parseChannels.ts frontend/src/lib/parseChannels.test.ts frontend/src/lib/reconcile.ts frontend/src/lib/reconcile.test.ts
+git commit -m "feat: parseo y reconciliación de canales en el cliente"
 ```
+
+> La página de canales (Tarea 7) usa estos dos módulos: parsea el archivo, reconcilia contra la grilla y aplica el plan por RLS (insertar nuevos como `unresolved`, marcar `is_active`). El backend (cron tick, Fase 3) resuelve después.
 
 ---
 
@@ -864,10 +827,10 @@ Cada vista se construye en dos pasos: **(a)** un test de la lógica/datos que fa
 
 **Especificación:**
 - Grilla editable de canales (columnas: URL, handle/nombre, estado de resolución, activo). Filas agregables/eliminables a mano.
-- Botón "Importar archivo" (CSV/`.xlsx`): sube el archivo a `POST /api/channels/import` (Tarea 3) → la API parsea, reconcilia, resuelve y suscribe; al volver, se refresca la grilla.
+- Botón "Importar archivo" (CSV/`.xlsx`): el cliente parsea con `parseChannelsFile` (Tarea 3), computa el plan con `reconcile` (Tarea 3) contra la grilla actual y **aplica por RLS** (insertar nuevos como `unresolved`, `is_active=true/false` según el plan). No hay backend de por medio; el cron tick (Fase 3) resuelve los `unresolved` después.
 - Sección destacada de canales **no resueltos** (`resolution_status='unresolved'`) para corregir a mano.
 - **Historial de imports:** lista de las últimas corridas de `import_runs` (fecha, agregados/quitados/no resueltos) leída por RLS.
-- Reemplazo total: subir un archivo reemplaza el conjunto activo (la API hace la reconciliación con soft-deactivate; ver Fase 2).
+- Reemplazo total: subir un archivo reemplaza el conjunto activo (reconciliación con soft-deactivate, ya testeada en la Tarea 3).
 
 - [ ] **Step 1 (TDD lógica):** test de `ChannelsPage` que, con `listChannels` mockeado, renderiza una fila por canal y resalta los `unresolved`. Implementar el componente para que pase.
 - [ ] **Step 2 (visual):** usar `frontend-design` para la grilla, el botón de import y la sección de no resueltos.
@@ -880,12 +843,12 @@ Cada vista se construye en dos pasos: **(a)** un test de la lógica/datos que fa
 **Especificación:**
 - `CampaignsPage`: lista de campañas con su estado; botón "Nueva campaña"; "Cerrar" (no borrar) una campaña → `status='closed'`.
 - `CampaignEditor`: form con marca, nombre y **plazo (`ends_at` obligatorio**, validar antes de guardar).
-- Brief: subir `.txt`/`.docx` o pegar texto → llamar `POST /api/brief/extract` → mostrar el **formulario pre-cargado y editable** con los requisitos extraídos → el usuario **elige qué requisitos verificar** y **confirma** antes de guardar (insert en `campaigns`/`requirements` por RLS).
+- Brief: **formulario manual estructurado** (sin subir archivo ni LLM): campos para nombre del juego, link esperado, código, y checkboxes de **qué requisitos verificar** (R1–R5). Al guardar, se insertan `campaigns` + `requirements` por RLS (el `spec` de cada requisito sale de los campos del form).
 - Asignar canales: multiselección de canales de la org → filas en `campaign_channels`.
 
-- [ ] **Step 1 (TDD lógica):** test de validación del form (no guarda sin `ends_at`) y del mapeo del draft del brief a filas de `requirements`. Implementar.
-- [ ] **Step 2 (visual):** usar `frontend-design` para el editor, el flujo de brief (upload → confirmar) y el selector de canales.
-- [ ] **Step 3: Commit** `feat: editor de campañas con brief, asignación y plazo`.
+- [ ] **Step 1 (TDD lógica):** test de validación del form (no guarda sin `ends_at`) y del mapeo de los campos del brief a filas de `requirements` (tipo + `spec` por requisito elegido). Implementar.
+- [ ] **Step 2 (visual):** usar `frontend-design` para el editor, el formulario del brief y el selector de canales.
+- [ ] **Step 3: Commit** `feat: editor de campañas con brief manual, asignación y plazo`.
 
 ### Tarea 9: Dashboard
 
@@ -930,16 +893,14 @@ Cada vista se construye en dos pasos: **(a)** un test de la lógica/datos que fa
 ## Validación de la fase (criterios de salida)
 
 - [ ] `cd frontend && npm run test` pasa; `npm run build` compila sin errores de TS.
-- [ ] `cd backend && pytest -q` pasa (incluye los tests de la API).
 - [ ] Registrarse crea la organización personal automáticamente (trigger) y el usuario solo ve lo suyo (RLS).
-- [ ] Importar un archivo de canales puebla la grilla; los no resueltos quedan marcados.
-- [ ] Crear una campaña: subir brief → confirmar requisitos → asignar canales → fijar plazo → guardar.
+- [ ] Importar un archivo de canales (parseado en el cliente) puebla la grilla por RLS; los no resueltos quedan marcados y el cron tick (Fase 3) los resuelve.
+- [ ] Crear una campaña: completar el brief en el formulario → elegir requisitos → asignar canales → fijar plazo → guardar (todo por RLS).
 - [ ] El dashboard muestra los estados correctos; la cola de revisión permite decidir y guarda en `reviews`.
 
 ## Notas / riesgos a confirmar al implementar
 
+- **Sin backend en esta fase:** el frontend habla solo con Supabase (RLS). No hay JWT en backend, ni CORS, ni `VITE_BACKEND_URL`. La resolución de canales y el WebSub los maneja el cron tick (Fase 3).
 - **Aislamiento multi-tenant:** las RLS del `schema.sql` ya garantizan que cada usuario vea solo su org. Verificar con dos usuarios distintos que no se filtran datos.
-- **JWT de Supabase:** el secreto para validar el token en el backend (`SUPABASE_JWT_SECRET`) sale del proyecto Supabase. Si el proyecto usa claves asimétricas (JWKS), ajustar `auth.py` para validar con la clave pública en vez de HS256.
 - **Protección de rutas:** envolver el router con `AuthProvider` y un guard que redirija a `LoginPage` si no hay sesión (no detallado acá por brevedad; es wiring directo).
 - **Pulido visual:** todas las vistas usan el skill `frontend-design` para el diseño final; este plan fija la estructura, los datos y la lógica, no el estilo.
-- **CORS:** el backend (FastAPI) debe permitir el origen del frontend para las llamadas a `/api/*`.

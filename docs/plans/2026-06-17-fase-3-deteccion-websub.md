@@ -33,6 +33,7 @@ backend/
       backoff.py       # scheduling del transcript (next_retry_at, transiciones)
       leases.py        # renovación de suscripciones por vencer
       deadlines.py     # revisor de plazos (pending sin verificación -> failed)
+      tick.py          # cron tick: orquesta resolución + backoff + leases + plazos
     association.py     # video -> campaña(s) por link/código en la descripción
     verify_multi.py    # verifica varias campañas reutilizando un transcript (usa evaluate_brief de Fase 1)
     channel_status.py  # mapeo veredicto -> estado del campaign_channel (precedencia)
@@ -45,6 +46,7 @@ backend/
     test_jobs_backoff.py
     test_jobs_leases.py
     test_jobs_deadlines.py
+    test_jobs_tick.py
     test_association.py
     test_verify_multi.py
     test_channel_status.py
@@ -1064,6 +1066,110 @@ Expected: PASS (Fases 1 + 2 + 3 completas).
 ```bash
 git add backend/verifier/channel_status.py backend/tests/test_channel_status.py
 git commit -m "feat: mapeo veredicto -> estado del campaign_channel (precedencia)"
+```
+
+---
+
+## Tarea 12: Cron tick (orquestador del mantenimiento)
+
+Un único job programado que en cada corrida hace **todo el mantenimiento**: resuelve canales `unresolved` (+ suscribe WebSub), reintenta transcripts vencidos, renueva leases por expirar y marca incumplimientos por plazo. Reemplaza al database webhook y a tener varios crons. Cada paso se inyecta como callable (los wrappers que leen/escriben Supabase con service_role son integración); el tick solo los orquesta en orden y es testeable verificando que se llaman.
+
+**Files:**
+- Create: `backend/verifier/jobs/tick.py`
+- Test: `backend/tests/test_jobs_tick.py`
+
+- [ ] **Step 1: Escribir el test que falla**
+
+```python
+from verifier.jobs.tick import run_tick, TickSteps
+
+
+def test_tick_runs_all_steps_in_order(mocker):
+    calls = []
+    steps = TickSteps(
+        resolve_unresolved_channels=lambda: calls.append("resolve"),
+        retry_due_transcripts=lambda: calls.append("transcripts"),
+        renew_expiring_leases=lambda: calls.append("leases"),
+        fail_overdue_channels=lambda: calls.append("deadlines"),
+    )
+    run_tick(steps)
+    assert calls == ["resolve", "transcripts", "leases", "deadlines"]
+
+
+def test_tick_continues_if_one_step_fails(mocker):
+    calls = []
+    def boom():
+        raise RuntimeError("falló transcripts")
+    steps = TickSteps(
+        resolve_unresolved_channels=lambda: calls.append("resolve"),
+        retry_due_transcripts=boom,
+        renew_expiring_leases=lambda: calls.append("leases"),
+        fail_overdue_channels=lambda: calls.append("deadlines"),
+    )
+    # un paso que falla no debe abortar el resto del tick
+    run_tick(steps)
+    assert calls == ["resolve", "leases", "deadlines"]
+```
+
+- [ ] **Step 2: Correr el test para ver que falla**
+
+Run: `pytest tests/test_jobs_tick.py -v`
+Expected: FAIL con `ModuleNotFoundError`.
+
+- [ ] **Step 3: Implementar `backend/verifier/jobs/tick.py`**
+
+```python
+from __future__ import annotations
+import logging
+from typing import Callable
+from pydantic import BaseModel
+
+log = logging.getLogger("verifier.tick")
+Step = Callable[[], None]
+
+
+class TickSteps(BaseModel):
+    resolve_unresolved_channels: Step
+    retry_due_transcripts: Step
+    renew_expiring_leases: Step
+    fail_overdue_channels: Step
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+def run_tick(steps: TickSteps) -> None:
+    """Corre cada paso del mantenimiento; si uno falla, loguea y sigue con el resto
+    (un error transitorio en una pieza no debe frenar las demás)."""
+    for name, step in [
+        ("resolve_unresolved_channels", steps.resolve_unresolved_channels),
+        ("retry_due_transcripts", steps.retry_due_transcripts),
+        ("renew_expiring_leases", steps.renew_expiring_leases),
+        ("fail_overdue_channels", steps.fail_overdue_channels),
+    ]:
+        try:
+            step()
+        except Exception:  # noqa: BLE001 - se loguea y se sigue
+            log.exception("tick: falló el paso %s", name)
+```
+
+> Los cuatro callables son los wrappers de integración con Supabase (service_role): leen lo pendiente, llaman a las funciones puras de las Tareas 2/7/8/9 (`resolve_channel`, `plan_transcript_attempt`, `renew_expiring_leases`, `channels_to_fail`) y escriben el resultado. En producción, el cron del VPS ejecuta `python -m verifier.jobs.tick` cada pocos minutos (entrypoint que arma los wrappers reales y llama `run_tick`).
+
+- [ ] **Step 4: Correr el test para ver que pasa**
+
+Run: `pytest tests/test_jobs_tick.py -v`
+Expected: PASS (2 tests).
+
+- [ ] **Step 5: Correr toda la suite**
+
+Run: `pytest -q`
+Expected: PASS (Fases 1 + 2 + 3 completas).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add backend/verifier/jobs/tick.py backend/tests/test_jobs_tick.py
+git commit -m "feat: cron tick que orquesta el mantenimiento"
 ```
 
 ---

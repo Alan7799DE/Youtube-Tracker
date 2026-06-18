@@ -4,8 +4,8 @@
 
 ## Dónde corre
 
-- **Backend (API + WebSub + jobs):** un **VPS de Hostinger** (siempre encendido, con URL pública e ingreso HTTPS). Se empaqueta con **Docker** para subirlo y actualizarlo fácil.
-- **Frontend (React):** se construye estático (`npm run build`) y se **sirve desde el mismo VPS con Caddy** (recomendado: un solo servidor, mismo dominio → sin CORS, sin sumar otro servicio). **Vercel/Netlify queda como alternativa opcional** si más adelante querés CDN global o preview deploys.
+- **Backend (callback de WebSub + cron tick):** un **VPS de Hostinger** (siempre encendido, con URL pública e ingreso HTTPS). Se empaqueta con **Docker** para subirlo y actualizarlo fácil. **No expone API autenticada** — su única superficie HTTP es el callback de WebSub.
+- **Frontend (React):** se construye estático (`npm run build`) y se **sirve desde el mismo VPS con Caddy**. Habla **solo con Supabase** (lee y escribe config por RLS); no llama al backend. **Vercel/Netlify queda como alternativa opcional**.
 
 ## Cuándo se materializa
 
@@ -14,50 +14,40 @@ El despliegue **no se necesita hasta la Fase 3**: las Fases 1 y 2 corren local (
 ## Arquitectura de despliegue (Docker Compose en el VPS)
 
 ```
-                    Internet (hub de YouTube + navegador → API)
-                                   │  443
-                          ┌────────▼─────────┐
-                          │      caddy        │  reverse proxy + HTTPS automático (Let's Encrypt)
-                          └───┬───────────┬───┘
-                              │           │
-                   ┌──────────▼──┐   ┌────▼──────────────┐
-                   │  frontend   │   │       api          │  uvicorn (FastAPI):
-                   │ (estático)  │   │ /websub/callback   │  /websub/callback + /api/*
-                   └─────────────┘   └────────────────────┘
-   cron del VPS ──► python -m verifier.jobs.run <job>   (backoff transcript, leases, revisor de plazos)
-                          (no exponen puertos; corren y terminan)
-                                   │
-                                   ▼
-                               Supabase (Postgres + Auth)  ── el frontend le pega directo por RLS
+   navegador                         hub de YouTube
+      │ (frontend, estático)              │ POST /websub/callback
+      ▼                                    ▼  443
+  ┌─────────────────────────── caddy ───────────────────────────┐
+  │  HTTPS automático (Let's Encrypt): sirve el frontend en /     │
+  │  y hace proxy de /websub/callback → api                       │
+  └───────────────┬───────────────────────────┬─────────────────┘
+                  │ (estáticos)                │
+                  ▼                            ▼
+            frontend build            api (uvicorn): SOLO /websub/callback
+                  │                            │
+   cron del VPS ──┼──► python -m verifier.jobs.tick   (resolución + backoff + leases + plazos)
+                  │                            │
+                  ▼                            ▼
+                       Supabase (Postgres + Auth + RLS)
+   (el frontend le pega directo por RLS; el backend escribe con service_role)
 ```
 
-- **Servicio `caddy`** — reverse proxy con **HTTPS automático**. Resuelve el TLS del callback de WebSub y de la API. Se le apunta un subdominio (ej. `api.tudominio.com`).
-- **Servicio `api`** — un único proceso uvicorn que sirve **el callback público de WebSub** (`/websub/callback`, sin auth) **y la API autenticada** (`/api/*`, con JWT). Ver "Entrypoint único" abajo.
-- **Jobs programados** — el worker de transcript (backoff), la renovación de leases y el revisor de plazos corren como **cron del VPS** que invoca entrypoints del paquete (`python -m verifier.jobs.run ...`). No reciben requests, no exponen puertos.
-- **Frontend** — build estático servido por **Caddy desde el VPS** (le pega a Supabase por RLS y a la API por `VITE_BACKEND_URL`). Si se sirve bajo el mismo dominio que la API, **no hace falta CORS**. Opcional: hostearlo en un static host externo (Vercel/Netlify).
+- **Servicio `caddy`** — HTTPS automático. **Sirve el frontend estático** (en `/`) y hace de reverse proxy del **callback de WebSub** (`/websub/callback`) hacia `api`. Un solo dominio.
+- **Servicio `api`** — un proceso uvicorn que sirve **únicamente el callback público de WebSub** (sin auth). No hay rutas `/api/*` (la config la escribe el frontend por RLS).
+- **Cron tick** — un **único** job programado del VPS (`python -m verifier.jobs.tick`) que en cada corrida resuelve canales `unresolved` (+ suscribe WebSub), renueva leases por expirar, reintenta transcripts vencidos y marca incumplimientos por plazo. No expone puertos.
+- **Frontend** — build estático servido por Caddy. Habla solo con Supabase (RLS). **No usa `VITE_BACKEND_URL` ni CORS**, porque no llama al backend.
 
-## Entrypoint único (consistencia con las Fases 3 y 4)
+## Entrypoint del backend
 
-Las Fases 3 y 4 definen routers FastAPI por separado (WebSub y API autenticada). En producción **se sirven desde una sola app ASGI**: `verifier/server.py` crea un `FastAPI()` y hace `include_router()` de ambos. Es el target de uvicorn en el contenedor:
+Como el backend solo expone el callback de WebSub, el target de uvicorn es directamente la app de WebSub:
 
 ```python
 # backend/verifier/server.py
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from verifier.websub.app import router as websub_router
-from verifier.api.app import router as api_router
-
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[__import__("os").environ.get("FRONTEND_ORIGIN", "*")],
-    allow_methods=["*"], allow_headers=["*"],
-)
-app.include_router(websub_router)
-app.include_router(api_router)
+from verifier.websub.app import app  # FastAPI con solo el router de WebSub
+# uvicorn verifier.server:app
 ```
 
-> Por eso los planes de Fase 3 y Fase 4 exponen `router` (APIRouter) además de un `app` para testear cada módulo en aislamiento. El `server.py` los compone.
+> Al no haber API autenticada, no hace falta componer routers, ni JWT, ni middleware de CORS. El frontend nunca toca el backend.
 
 ## Archivos a crear (en el paso de deploy, ~Fase 3)
 
@@ -65,10 +55,10 @@ app.include_router(api_router)
 |---|---|
 | `backend/Dockerfile` | Imagen del backend (Python 3.12 + deps + paquete `verifier`). |
 | `backend/.dockerignore` | Excluir `.venv`, `__pycache__`, `.env`, tests del build. |
-| `docker-compose.yml` | Servicios `api` + `caddy` (+ red + volúmenes de certificados). |
-| `Caddyfile` | HTTPS automático: sirve el **frontend estático** y hace de reverse proxy de `/api/*` y `/websub/*` hacia `api`. |
-| `backend/verifier/server.py` | Entrypoint ASGI único (routers WebSub + API). |
-| `backend/verifier/jobs/run.py` | CLI para que el cron invoque cada job. |
+| `docker-compose.yml` | Servicios `api` + `caddy` (+ red + volúmenes de certificados y del build del frontend). |
+| `Caddyfile` | HTTPS automático: sirve el frontend en `/` y proxea `/websub/callback` → `api`. |
+| `backend/verifier/server.py` | Entrypoint ASGI (la app de WebSub). |
+| `backend/verifier/jobs/tick.py` | El cron tick: orquesta resolución + backoff + leases + plazos. |
 
 > Flujo de deploy: `git pull && docker compose up -d --build` en el VPS (o un GitHub Actions que haga SSH + ese comando). Los secretos viven en un `.env` del VPS (no en el repo); ver variables en [`requisitos-externos.md`](requisitos-externos.md).
 
@@ -76,16 +66,15 @@ app.include_router(api_router)
 
 - [ ] **Acceso SSH al VPS** de Hostinger.
 - [ ] **Docker + Docker Compose** instalados en el VPS.
-- [ ] **Dominio o subdominio** apuntando a la IP del VPS (ej. `api.tudominio.com` para el backend).
+- [ ] **Dominio o subdominio** apuntando a la IP del VPS (ej. `tudominio.com`).
 - [ ] **Puertos 80 y 443 abiertos** en el firewall del VPS (Caddy los usa para HTTPS).
-- [ ] **`.env` en el VPS** con las claves del backend (OpenAI, YouTube, Supabase URL/service_role/JWT) + `FRONTEND_ORIGIN` y `WEBSUB_CALLBACK_URL` (= `https://api.tudominio.com/websub/callback`).
-- [ ] **(Frontend) servido por Caddy desde el VPS** — el build (`npm run build`) se copia al server y Caddy lo sirve. Opcional: cuenta de Vercel/Netlify si preferís hostearlo afuera.
+- [ ] **`.env` en el VPS** con las claves del backend (OpenAI, YouTube, Supabase URL/service_role) + `WEBSUB_CALLBACK_URL` (= `https://tudominio.com/websub/callback`).
+- [ ] **Cron** configurado en el VPS para correr `python -m verifier.jobs.tick` cada pocos minutos.
 
 ## Variables de entorno adicionales (despliegue)
 
 | Variable | Para qué | Dónde |
 |---|---|---|
-| `FRONTEND_ORIGIN` | CORS: origen del frontend. **Solo si está en otro dominio** (Vercel/subdominio distinto); sirviendo desde el mismo dominio que la API, no hace falta. | `backend/.env` |
 | `WEBSUB_CALLBACK_URL` | URL pública del callback (dominio + `/websub/callback`) | `backend/.env` |
 
-(El resto de las claves del backend y del frontend están en [`requisitos-externos.md`](requisitos-externos.md).)
+> Ya **no** hacen falta `FRONTEND_ORIGIN` (no hay CORS) ni `VITE_BACKEND_URL` (el frontend no llama al backend). El resto de las claves está en [`requisitos-externos.md`](requisitos-externos.md).

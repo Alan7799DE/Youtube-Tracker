@@ -16,7 +16,7 @@ Hoy la verificación es manual: alguien entra canal por canal a confirmar que ca
 
 Un pipeline automático que:
 
-1. **Entrada** — importa la lista de canales desde un archivo (CSV/`.xlsx`) a una grilla editable, y carga el brief (texto/`.txt`/`.docx`) con extracción por LLM + confirmación. Sin Google APIs ni OAuth.
+1. **Entrada** — importa la lista de canales desde un archivo (CSV/`.xlsx`, parseado en el cliente) a una grilla editable, y carga el brief en un **formulario manual**. Todo lo escribe la UI por RLS; sin Google APIs ni OAuth ni API backend.
 2. **Detección** — se entera al instante de cada nuevo video vía WebSub (push de YouTube, sin polling).
 3. **Verificación** — obtiene metadata y transcript y compara contra el brief de la campaña, produciendo un veredicto estructurado y auditable, por campaña. El incumplimiento se marca por **plazo vencido**, no por video.
 4. **Presentación** — una interfaz web multi-usuario que muestra el estado de cada canal y deriva a una persona solo los casos ambiguos.
@@ -41,7 +41,7 @@ Un pipeline automático que:
 |------|----------|
 | Interfaz web | React + Vite + `@supabase/supabase-js` (construida con Claude Code) — gestiona la config y muestra los resultados |
 | Backend / motor | Python (FastAPI + workers) vía Claude Code |
-| Entrada | Subida de archivos (CSV/`.xlsx` canales; `.txt`/`.docx`/texto brief) + extracción LLM |
+| Entrada | Canales: archivo CSV/`.xlsx` parseado en el cliente → RLS. Brief: formulario manual → RLS |
 | Detección | YouTube WebSub + Data API v3 |
 | Transcript | `youtube-transcript-api` (MIT), detrás de interfaz abstracta |
 | LLM | API OpenAI con structured output |
@@ -50,13 +50,13 @@ Un pipeline automático que:
 
 ## Arquitectura en una línea
 
-**Todo se construye con Claude Code.** El frontend (React) lee y muestra; el backend (Python) corre el motor de verificación. Se encuentran en la base de datos de Supabase, que actúa como contrato compartido entre ambos.
+**Todo se construye con Claude Code.** El frontend (React) escribe toda la config y lee los resultados, **solo contra Supabase por RLS**; el backend (Python: callback de WebSub + cron tick) corre el motor de verificación. **No se hablan entre sí** — se encuentran solo en la base de datos de Supabase, el contrato compartido.
 
 ## Plan de implementación por fases
 
 1. **Núcleo de verificación** — input manual (URL de video + brief): ingesta + verificación + persistencia. Validar lo difícil (transcript + LLM + decisión) contra un set dorado.
-2. **Entrada por archivo + grilla** — import de canales (CSV/`.xlsx`), resolución URL→`channel_id`, reconciliación; carga del brief con extracción LLM. Plazo por campaña.
-3. **Detección automática (WebSub)** — suscripción por canal, dedup, renovación de leases, worker de transcript con backoff.
+2. **Resolución de canales (backend)** — normalización de referencias y resolución URL→`channel_id` con la YouTube API (la usa el cron tick). El parseo del archivo, la reconciliación y el brief manual viven en el frontend (fase 4).
+3. **Detección automática (WebSub) + cron tick** — suscripción por canal, dedup, asociación video→campaña(s), y un cron tick que orquesta resolución + backoff de transcript + leases + revisor de plazos.
 4. **Interfaz web + multi-tenancy (Claude Code)** — las vistas en React sobre el esquema de Supabase, con auth + organización personal y RLS por org.
 5. **Salida, notificaciones y evaluación** — cola de revisión, alertas, harness de evaluación.
 6. **Robustez y escala** (cuando haya mercado) — proxies residenciales o API de transcript de terceros; opcionalmente visión para R5.
