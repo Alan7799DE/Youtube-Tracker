@@ -24,14 +24,14 @@ export function DashboardPage() {
 
       <div className="cards">
         <div className="card card--total"><span className="card-label">Total</span><span className="card-num">{s.total}</span></div>
-        <div className="card card--ontrack"><span className="card-label">Al día</span><span className="card-num">{s.onTrack}</span></div>
-        <div className="card card--attention"><span className="card-label">Requieren atención</span><span className="card-num">{s.attention}</span></div>
-        <div className="card card--pending"><span className="card-label">Pendientes</span><span className="card-num">{s.pending}</span></div>
+        <div className="card card--ontrack"><span className="card-label">On track</span><span className="card-num">{s.onTrack}</span></div>
+        <div className="card card--attention"><span className="card-label">Needs attention</span><span className="card-num">{s.attention}</span></div>
+        <div className="card card--pending"><span className="card-label">Pending</span><span className="card-num">{s.pending}</span></div>
       </div>
 
       <table>
         <thead>
-          <tr><th>Campaña</th><th>Canal</th><th>Estado</th></tr>
+          <tr><th>Campaign</th><th>Channel</th><th>Status</th></tr>
         </thead>
         <tbody>
           {rows.map((r) => {

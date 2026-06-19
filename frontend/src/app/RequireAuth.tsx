@@ -6,7 +6,7 @@ import { LoginPage } from "../auth/LoginPage";
 // login, y con sesión renderiza la app. Toda la app vive detrás de este guard.
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <p>Cargando…</p>;
+  if (loading) return <p>Loading…</p>;
   if (!user) return <LoginPage />;
   return <>{children}</>;
 }

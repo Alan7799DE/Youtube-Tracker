@@ -23,13 +23,13 @@ describe("ChannelsPage", () => {
 
     await waitFor(() => expect(screen.getByText("https://youtube.com/@a")).toBeTruthy());
     expect(screen.getByText("https://youtube.com/@b")).toBeTruthy();
-    // el no resuelto aparece marcado como "Sin resolver"
-    expect(screen.getByText("Sin resolver")).toBeTruthy();
+    // el no resuelto aparece marcado como "Unresolved"
+    expect(screen.getByText("Unresolved")).toBeTruthy();
   });
 
   it("sin canales muestra el estado vacío de imports", async () => {
     (listChannels as any).mockResolvedValue([]);
     render(<ChannelsPage />);
-    await waitFor(() => expect(screen.getByText("Todavía no hay imports.")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("No imports yet.")).toBeTruthy());
   });
 });

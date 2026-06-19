@@ -18,8 +18,8 @@ describe("DashboardPage", () => {
     render(<MemoryRouter><DashboardPage /></MemoryRouter>);
 
     await waitFor(() => expect(screen.getByText("Canal A")).toBeTruthy());
-    expect(screen.getByText("Cumple")).toBeTruthy();
-    // tarjeta "Al día" con 1
-    expect(screen.getByText("Al día")).toBeTruthy();
+    expect(screen.getByText("Compliant")).toBeTruthy();
+    // tarjeta "On track" con 1
+    expect(screen.getByText("On track")).toBeTruthy();
   });
 });

@@ -27,17 +27,17 @@ describe("validateCampaignForm", () => {
     expect(validateCampaignForm(base)).toEqual([]);
   });
   it("exige el plazo (ends_at)", () => {
-    expect(validateCampaignForm({ ...base, endsAt: "" })).toContain("Falta el plazo (fecha de fin).");
+    expect(validateCampaignForm({ ...base, endsAt: "" })).toContain("Deadline (end date) is required.");
   });
   it("exige el link si R1 está elegido", () => {
-    expect(validateCampaignForm({ ...base, expectedLink: "" })).toContain("R1 elegido pero falta el link esperado.");
+    expect(validateCampaignForm({ ...base, expectedLink: "" })).toContain("R1 selected but the expected link is missing.");
   });
   it("exige el código si R2 está elegido", () => {
-    expect(validateCampaignForm({ ...base, code: "" })).toContain("R2 elegido pero falta el código.");
+    expect(validateCampaignForm({ ...base, code: "" })).toContain("R2 selected but the code is missing.");
   });
   it("exige el nombre del juego si R3/R4 están elegidos", () => {
     const form = { ...base, gameName: "", requirements: { ...base.requirements, R4: true } };
-    expect(validateCampaignForm(form)).toContain("R3/R4 elegidos pero falta el nombre del juego.");
+    expect(validateCampaignForm(form)).toContain("R3/R4 selected but the game name is missing.");
   });
   it("no exige link/código si esos requisitos no están elegidos", () => {
     const form = {

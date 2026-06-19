@@ -15,11 +15,11 @@ describe("CampaignEditor", () => {
   it("no guarda sin plazo y muestra el error de validación", async () => {
     render(<MemoryRouter><CampaignEditor /></MemoryRouter>);
     // completar marca y nombre, dejar el plazo vacío
-    fireEvent.change(screen.getByLabelText("Marca"), { target: { value: "Acme" } });
-    fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Lanzamiento" } });
-    fireEvent.click(screen.getByRole("button", { name: "Guardar campaña" }));
+    fireEvent.change(screen.getByLabelText("Brand"), { target: { value: "Acme" } });
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Launch" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save campaign" }));
 
-    await waitFor(() => expect(screen.getByText("Falta el plazo (fecha de fin).")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Deadline (end date) is required.")).toBeTruthy());
     expect(createCampaign).not.toHaveBeenCalled();
   });
 });

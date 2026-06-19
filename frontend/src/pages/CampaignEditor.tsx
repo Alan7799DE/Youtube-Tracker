@@ -8,11 +8,11 @@ import type { Channel } from "../lib/types";
 import { toMessage } from "../lib/errors";
 
 const REQUIREMENT_LABELS: Record<RequirementCode, string> = {
-  R1: "Link de descarga en la descripción",
-  R2: "Código promocional en la descripción",
-  R3: "Menciona el nombre del juego",
-  R4: "Habla de qué trata el juego",
-  R5: "Muestra gameplay en pantalla",
+  R1: "Download link in the description",
+  R2: "Promo code in the description",
+  R3: "Mentions the game name",
+  R4: "Talks about what the game is",
+  R5: "Shows gameplay on screen",
 };
 
 const EMPTY: CampaignForm = {
@@ -67,7 +67,7 @@ export function CampaignEditor() {
 
   return (
     <form onSubmit={onSubmit}>
-      <h1>Nueva campaña</h1>
+      <h1>New campaign</h1>
 
       {errors.length > 0 && (
         <ul role="alert">
@@ -75,19 +75,19 @@ export function CampaignEditor() {
         </ul>
       )}
 
-      <label>Marca<input value={form.brand} onChange={(e) => set("brand", e.target.value)} /></label>
-      <label>Nombre<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
-      <label>Plazo (fecha de fin)<input type="date" value={form.endsAt} onChange={(e) => set("endsAt", e.target.value)} /></label>
+      <label>Brand<input value={form.brand} onChange={(e) => set("brand", e.target.value)} /></label>
+      <label>Name<input value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
+      <label>Deadline (end date)<input type="date" value={form.endsAt} onChange={(e) => set("endsAt", e.target.value)} /></label>
 
       <fieldset>
         <legend>Brief</legend>
-        <label>Nombre del juego<input value={form.gameName} onChange={(e) => set("gameName", e.target.value)} /></label>
-        <label>Link esperado<input value={form.expectedLink} onChange={(e) => set("expectedLink", e.target.value)} /></label>
-        <label>Código<input value={form.code} onChange={(e) => set("code", e.target.value)} /></label>
+        <label>Game name<input value={form.gameName} onChange={(e) => set("gameName", e.target.value)} /></label>
+        <label>Expected link<input value={form.expectedLink} onChange={(e) => set("expectedLink", e.target.value)} /></label>
+        <label>Code<input value={form.code} onChange={(e) => set("code", e.target.value)} /></label>
       </fieldset>
 
       <fieldset>
-        <legend>Requisitos a verificar</legend>
+        <legend>Requirements to verify</legend>
         {(Object.keys(REQUIREMENT_LABELS) as RequirementCode[]).map((code) => (
           <label key={code}>
             <input type="checkbox" checked={form.requirements[code]} onChange={() => toggleReq(code)} />
@@ -97,9 +97,9 @@ export function CampaignEditor() {
       </fieldset>
 
       <fieldset>
-        <legend>Asignar canales</legend>
+        <legend>Assign channels</legend>
         {channels.length === 0 ? (
-          <p>No hay canales. Importá canales primero.</p>
+          <p>No channels yet. Import channels first.</p>
         ) : (
           channels.map((c) => (
             <label key={c.id}>
@@ -110,7 +110,7 @@ export function CampaignEditor() {
         )}
       </fieldset>
 
-      <button type="submit" disabled={saving}>{saving ? "Guardando…" : "Guardar campaña"}</button>
+      <button type="submit" disabled={saving}>{saving ? "Saving…" : "Save campaign"}</button>
     </form>
   );
 }

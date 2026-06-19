@@ -29,13 +29,13 @@ export function CampaignsPage() {
   return (
     <section>
       <header className="page-head">
-        <h1>Campañas</h1>
-        <Link className="btn" to="/campaigns/new">Nueva campaña</Link>
+        <h1>Campaigns</h1>
+        <Link className="btn" to="/campaigns/new">New campaign</Link>
       </header>
       {error && <p role="alert">{error}</p>}
       <table>
         <thead>
-          <tr><th>Marca</th><th>Nombre</th><th>Plazo</th><th>Estado</th><th></th></tr>
+          <tr><th>Brand</th><th>Name</th><th>Deadline</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
           {campaigns.map((c) => (
@@ -43,10 +43,10 @@ export function CampaignsPage() {
               <td>{c.brand}</td>
               <td><Link to={`/campaigns/${c.id}`}>{c.name}</Link></td>
               <td>{c.ends_at}</td>
-              <td>{c.status === "active" ? "Activa" : "Cerrada"}</td>
+              <td>{c.status === "active" ? "Active" : "Closed"}</td>
               <td>
                 {c.status === "active" && (
-                  <button type="button" onClick={() => onClose(c.id)}>Cerrar</button>
+                  <button type="button" onClick={() => onClose(c.id)}>Close</button>
                 )}
               </td>
             </tr>

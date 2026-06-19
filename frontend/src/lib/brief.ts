@@ -34,12 +34,12 @@ export function briefToRequirements(form: CampaignForm): RequirementInput[] {
 
 export function validateCampaignForm(form: CampaignForm): string[] {
   const errors: string[] = [];
-  if (!form.brand.trim()) errors.push("Falta la marca.");
-  if (!form.name.trim()) errors.push("Falta el nombre de la campaña.");
-  if (!form.endsAt.trim()) errors.push("Falta el plazo (fecha de fin).");
-  if (form.requirements.R1 && !form.expectedLink.trim()) errors.push("R1 elegido pero falta el link esperado.");
-  if (form.requirements.R2 && !form.code.trim()) errors.push("R2 elegido pero falta el código.");
+  if (!form.brand.trim()) errors.push("Brand is required.");
+  if (!form.name.trim()) errors.push("Campaign name is required.");
+  if (!form.endsAt.trim()) errors.push("Deadline (end date) is required.");
+  if (form.requirements.R1 && !form.expectedLink.trim()) errors.push("R1 selected but the expected link is missing.");
+  if (form.requirements.R2 && !form.code.trim()) errors.push("R2 selected but the code is missing.");
   if ((form.requirements.R3 || form.requirements.R4) && !form.gameName.trim())
-    errors.push("R3/R4 elegidos pero falta el nombre del juego.");
+    errors.push("R3/R4 selected but the game name is missing.");
   return errors;
 }

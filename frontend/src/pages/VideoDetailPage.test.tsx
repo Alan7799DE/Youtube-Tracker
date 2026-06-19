@@ -31,8 +31,8 @@ describe("VideoDetailPage", () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => expect(screen.getByText("Camp — Cumple")).toBeTruthy());
-    const link = screen.getByRole("link", { name: "ver minuto" }) as HTMLAnchorElement;
+    await waitFor(() => expect(screen.getByText("Camp — Compliant")).toBeTruthy());
+    const link = screen.getByRole("link", { name: "jump to timestamp" }) as HTMLAnchorElement;
     expect(link.href).toBe("https://youtu.be/YT1?t=75");
   });
 });

@@ -5,7 +5,7 @@ import { getVideoDetail, type VideoDetail } from "../data/videos";
 import { youtubeTimestampUrl } from "../lib/youtube";
 import { toMessage } from "../lib/errors";
 
-const VERDICT_LABEL: Record<string, string> = { pass: "Cumple", fail: "No cumplió", review: "En revisión" };
+const VERDICT_LABEL: Record<string, string> = { pass: "Compliant", fail: "Not met", review: "In review" };
 
 export function VideoDetailPage() {
   const { id } = useParams();
@@ -18,18 +18,18 @@ export function VideoDetailPage() {
   }, [id]);
 
   if (error) return <p role="alert">{error}</p>;
-  if (!detail) return <p>Cargando…</p>;
+  if (!detail) return <p>Loading…</p>;
 
   return (
     <section>
       <h1>{detail.title ?? "Video"}</h1>
       <p>
         <a href={youtubeTimestampUrl(detail.youtubeVideoId, null)} target="_blank" rel="noreferrer">
-          Ver en YouTube
+          Watch on YouTube
         </a>
       </p>
 
-      {detail.verdicts.length === 0 && <p>Todavía no hay verificaciones para este video.</p>}
+      {detail.verdicts.length === 0 && <p>No verifications for this video yet.</p>}
 
       {detail.verdicts.map((v, i) => (
         <article key={i} className="verdict">
@@ -38,13 +38,13 @@ export function VideoDetailPage() {
             {v.results.map((r) => (
               <li key={r.code}>
                 <strong>{r.met ? "✓" : "✗"} {r.code}</strong>
-                {r.confidence != null && <span> (confianza {Math.round(r.confidence * 100)}%)</span>}
+                {r.confidence != null && <span> (confidence {Math.round(r.confidence * 100)}%)</span>}
                 {r.evidence && <span> — “{r.evidence}”</span>}
                 {r.evidenceTimestampS != null && (
                   <>
                     {" "}
                     <a href={youtubeTimestampUrl(detail.youtubeVideoId, r.evidenceTimestampS)} target="_blank" rel="noreferrer">
-                      ver minuto
+                      jump to timestamp
                     </a>
                   </>
                 )}

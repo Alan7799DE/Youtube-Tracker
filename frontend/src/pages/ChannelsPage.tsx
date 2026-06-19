@@ -47,9 +47,9 @@ export function ChannelsPage() {
   return (
     <section>
       <header className="page-head">
-        <h1>Canales</h1>
+        <h1>Channels</h1>
         <label className="btn">
-          {busy ? "Importando…" : "Importar archivo"}
+          {busy ? "Importing…" : "Import file"}
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" hidden disabled={busy} onChange={onImport} />
         </label>
       </header>
@@ -58,34 +58,34 @@ export function ChannelsPage() {
 
       {unresolved.length > 0 && (
         <div className="callout-warning">
-          <strong>{unresolved.length} canal(es) sin resolver</strong> — el backend los resolverá, o corregí la URL a mano.
+          <strong>{unresolved.length} unresolved channel(s)</strong> — the backend will resolve them, or fix the URL manually.
         </div>
       )}
 
       <table>
         <thead>
-          <tr><th>URL</th><th>Handle / nombre</th><th>Resolución</th><th>Activo</th></tr>
+          <tr><th>URL</th><th>Handle / name</th><th>Resolution</th><th>Active</th></tr>
         </thead>
         <tbody>
           {channels.map((c) => (
             <tr key={c.id} className={c.resolution_status === "unresolved" ? "row-unresolved" : ""}>
               <td>{c.source_url}</td>
               <td>{c.handle ?? c.name ?? "—"}</td>
-              <td>{c.resolution_status === "unresolved" ? "Sin resolver" : c.resolution_status}</td>
-              <td>{c.is_active ? "Sí" : "No"}</td>
+              <td>{c.resolution_status === "unresolved" ? "Unresolved" : c.resolution_status}</td>
+              <td>{c.is_active ? "Yes" : "No"}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <h2>Historial de imports</h2>
+      <h2>Import history</h2>
       {imports.length === 0 ? (
-        <p>Todavía no hay imports.</p>
+        <p>No imports yet.</p>
       ) : (
         <ul>
           {imports.map((r) => (
             <li key={r.id}>
-              {new Date(r.created_at).toLocaleString()} — +{r.added ?? 0} / −{r.deactivated ?? 0} / {r.unresolved ?? 0} sin resolver
+              {new Date(r.created_at).toLocaleString()} — +{r.added ?? 0} / −{r.deactivated ?? 0} / {r.unresolved ?? 0} unresolved
             </li>
           ))}
         </ul>

@@ -24,8 +24,8 @@ describe("ReviewQueuePage", () => {
     render(<ReviewQueuePage />);
     await waitFor(() => expect(screen.getByText("Camp")).toBeTruthy());
 
-    fireEvent.click(screen.getByLabelText("Muestra gameplay"));
-    fireEvent.click(screen.getByRole("button", { name: "Aprobar" }));
+    fireEvent.click(screen.getByLabelText("Shows gameplay"));
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
     await waitFor(() =>
       expect(insertReview).toHaveBeenCalledWith(expect.anything(), {
@@ -40,6 +40,6 @@ describe("ReviewQueuePage", () => {
   it("cola vacía muestra el estado feliz", async () => {
     (listReviewQueue as any).mockResolvedValue([]);
     render(<ReviewQueuePage />);
-    await waitFor(() => expect(screen.getByText("No hay nada para revisar. 🎉")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Nothing to review. 🎉")).toBeTruthy());
   });
 });

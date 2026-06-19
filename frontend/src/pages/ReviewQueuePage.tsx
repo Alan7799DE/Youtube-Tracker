@@ -36,30 +36,30 @@ export function ReviewQueuePage() {
 
   return (
     <section>
-      <h1>Cola de revisión</h1>
+      <h1>Review queue</h1>
       {error && <p role="alert">{error}</p>}
       {items.length === 0 ? (
-        <p>No hay nada para revisar. 🎉</p>
+        <p>Nothing to review. 🎉</p>
       ) : (
         <ul className="review-list">
           {items.map((item) => (
             <li key={item.verificationId} className="review-item">
               <div>
-                <strong>{item.campaignName}</strong> — {item.title ?? "(sin título)"}{" "}
-                <a href={youtubeTimestampUrl(item.youtubeVideoId, null)} target="_blank" rel="noreferrer">ver video</a>
+                <strong>{item.campaignName}</strong> — {item.title ?? "(untitled)"}{" "}
+                <a href={youtubeTimestampUrl(item.youtubeVideoId, null)} target="_blank" rel="noreferrer">watch video</a>
               </div>
-              <p className="hint">Todo el texto cumple; confirmá el gameplay (R5).</p>
+              <p className="hint">All text checks pass; confirm the gameplay (R5).</p>
               <label>
                 <input
                   type="checkbox"
                   checked={gameplay[item.verificationId] ?? false}
                   onChange={(e) => setGameplay((g) => ({ ...g, [item.verificationId]: e.target.checked }))}
                 />
-                Muestra gameplay
+                Shows gameplay
               </label>
               <div className="actions">
-                <button type="button" onClick={() => decide(item, true)}>Aprobar</button>
-                <button type="button" onClick={() => decide(item, false)}>Rechazar</button>
+                <button type="button" onClick={() => decide(item, true)}>Approve</button>
+                <button type="button" onClick={() => decide(item, false)}>Reject</button>
               </div>
             </li>
           ))}
