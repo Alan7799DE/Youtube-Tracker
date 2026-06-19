@@ -35,4 +35,30 @@ describe("validateCampaignForm", () => {
   it("exige el código si R2 está elegido", () => {
     expect(validateCampaignForm({ ...base, code: "" })).toContain("R2 elegido pero falta el código.");
   });
+  it("exige el nombre del juego si R3/R4 están elegidos", () => {
+    const form = { ...base, gameName: "", requirements: { ...base.requirements, R4: true } };
+    expect(validateCampaignForm(form)).toContain("R3/R4 elegidos pero falta el nombre del juego.");
+  });
+  it("no exige link/código si esos requisitos no están elegidos", () => {
+    const form = {
+      ...base,
+      expectedLink: "",
+      code: "",
+      requirements: { R1: false, R2: false, R3: true, R4: false, R5: false },
+    };
+    expect(validateCampaignForm(form)).toEqual([]);
+  });
+});
+
+describe("briefToRequirements (más casos)", () => {
+  it("R4 mapea a describe_game (llm) con el nombre del juego", () => {
+    const form = { ...base, requirements: { R1: false, R2: false, R3: false, R4: true, R5: false } };
+    expect(briefToRequirements(form)).toEqual([
+      { code: "R4", type: "describe_game", spec: { game_name: "MiJuego" }, method: "llm", required: true },
+    ]);
+  });
+  it("sin requisitos elegidos -> lista vacía", () => {
+    const form = { ...base, requirements: { R1: false, R2: false, R3: false, R4: false, R5: false } };
+    expect(briefToRequirements(form)).toEqual([]);
+  });
 });

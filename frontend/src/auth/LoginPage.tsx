@@ -18,15 +18,23 @@ export function LoginPage() {
   }
 
   return (
-    <form onSubmit={submit}>
-      <h1>{mode === "login" ? "Ingresar" : "Crear cuenta"}</h1>
-      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
-      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" />
-      <button type="submit">{mode === "login" ? "Ingresar" : "Registrarme"}</button>
-      <button type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")}>
-        {mode === "login" ? "Crear cuenta" : "Ya tengo cuenta"}
-      </button>
-      {error && <p role="alert">{error}</p>}
-    </form>
+    <div className="login-screen">
+      <form className="login-card" onSubmit={submit}>
+        <h1>{mode === "login" ? "Ingresar" : "Crear cuenta"}</h1>
+        <label>
+          Email
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vos@correo.com" />
+        </label>
+        <label>
+          Contraseña
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+        </label>
+        <button className="btn" type="submit">{mode === "login" ? "Ingresar" : "Registrarme"}</button>
+        <button type="button" className="link-btn" onClick={() => setMode(mode === "login" ? "signup" : "login")}>
+          {mode === "login" ? "Crear una cuenta nueva" : "Ya tengo cuenta"}
+        </button>
+        {error && <p role="alert">{error}</p>}
+      </form>
+    </div>
   );
 }

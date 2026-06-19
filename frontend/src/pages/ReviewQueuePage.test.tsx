@@ -36,4 +36,10 @@ describe("ReviewQueuePage", () => {
       })
     );
   });
+
+  it("cola vacía muestra el estado feliz", async () => {
+    (listReviewQueue as any).mockResolvedValue([]);
+    render(<ReviewQueuePage />);
+    await waitFor(() => expect(screen.getByText("No hay nada para revisar. 🎉")).toBeTruthy());
+  });
 });

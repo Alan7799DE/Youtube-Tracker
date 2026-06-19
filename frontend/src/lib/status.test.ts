@@ -26,4 +26,8 @@ describe("dashboardRowBadge", () => {
   it("un estado terminal gana sobre el review", () => {
     expect(dashboardRowBadge("verified", true)).toEqual({ label: "Cumple", tone: "success" });
   });
+  it("el review solo aplica a pending, no a incomplete ni failed", () => {
+    expect(dashboardRowBadge("incomplete", true)).toEqual({ label: "Incompleto", tone: "warning" });
+    expect(dashboardRowBadge("failed", true)).toEqual({ label: "No cumplió", tone: "danger" });
+  });
 });

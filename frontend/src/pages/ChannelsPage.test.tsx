@@ -26,4 +26,10 @@ describe("ChannelsPage", () => {
     // el no resuelto aparece marcado como "Sin resolver"
     expect(screen.getByText("Sin resolver")).toBeTruthy();
   });
+
+  it("sin canales muestra el estado vacío de imports", async () => {
+    (listChannels as any).mockResolvedValue([]);
+    render(<ChannelsPage />);
+    await waitFor(() => expect(screen.getByText("Todavía no hay imports.")).toBeTruthy());
+  });
 });
