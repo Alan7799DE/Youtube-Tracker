@@ -41,7 +41,7 @@ export function CampaignsPage() {
           {campaigns.map((c) => (
             <tr key={c.id}>
               <td>{c.brand}</td>
-              <td><Link to={`/campaigns/${c.id}`}>{c.name}</Link></td>
+              <td>{c.name}</td>
               <td>{c.ends_at}</td>
               <td>{c.status === "active" ? "Active" : "Closed"}</td>
               <td>

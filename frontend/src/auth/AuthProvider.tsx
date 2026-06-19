@@ -8,10 +8,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setUser(data.session?.user ?? null))
+      .catch(() => setUser(null)) // si falla la lectura de sesión, tratamos como anónimo
+      .finally(() => setLoading(false)); // nunca dejar la app colgada en "Loading…"
     const { data } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null);
     });

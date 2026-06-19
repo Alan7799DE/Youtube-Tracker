@@ -24,12 +24,18 @@ export async function applyReconcilePlan(client: SupabaseClient, plan: Reconcile
     const { error } = await client.from("channels").insert(rows);
     if (error) throw error;
   }
-  for (const c of plan.toReactivate) {
-    const { error } = await client.from("channels").update({ is_active: true }).eq("id", c.id);
+  if (plan.toReactivate.length > 0) {
+    const { error } = await client
+      .from("channels")
+      .update({ is_active: true })
+      .in("id", plan.toReactivate.map((c) => c.id));
     if (error) throw error;
   }
-  for (const c of plan.toDeactivate) {
-    const { error } = await client.from("channels").update({ is_active: false }).eq("id", c.id);
+  if (plan.toDeactivate.length > 0) {
+    const { error } = await client
+      .from("channels")
+      .update({ is_active: false })
+      .in("id", plan.toDeactivate.map((c) => c.id));
     if (error) throw error;
   }
 }

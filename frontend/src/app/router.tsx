@@ -20,7 +20,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: "channels", element: <ChannelsPage /> },
       { path: "campaigns", element: <CampaignsPage /> },
-      { path: "campaigns/:id", element: <CampaignEditor /> },
+      { path: "campaigns/new", element: <CampaignEditor /> },
       { path: "videos/:id", element: <VideoDetailPage /> },
       { path: "review", element: <ReviewQueuePage /> },
     ],

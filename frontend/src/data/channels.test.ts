@@ -18,10 +18,10 @@ describe("listChannels", () => {
 });
 
 describe("applyReconcilePlan", () => {
-  it("inserta los nuevos como unresolved y (des)activa según el plan", async () => {
+  it("inserta los nuevos como unresolved y (des)activa en lote según el plan", async () => {
     const insert = vi.fn().mockResolvedValue({ error: null });
-    const eq = vi.fn().mockResolvedValue({ error: null });
-    const update = vi.fn().mockReturnValue({ eq });
+    const inFn = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({ in: inFn });
     const from = vi.fn().mockReturnValue({ insert, update });
     const client = { from } as any;
 
@@ -38,7 +38,7 @@ describe("applyReconcilePlan", () => {
     ]);
     expect(update).toHaveBeenCalledWith({ is_active: true });
     expect(update).toHaveBeenCalledWith({ is_active: false });
-    expect(eq).toHaveBeenCalledWith("id", "4");
-    expect(eq).toHaveBeenCalledWith("id", "2");
+    expect(inFn).toHaveBeenCalledWith("id", ["4"]);
+    expect(inFn).toHaveBeenCalledWith("id", ["2"]);
   });
 });
