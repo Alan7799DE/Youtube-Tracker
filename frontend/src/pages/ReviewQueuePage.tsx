@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/useAuth";
 import { listReviewQueue, insertReview, type ReviewItem } from "../data/reviews";
 import { youtubeTimestampUrl } from "../lib/youtube";
+import { toMessage } from "../lib/errors";
 
 export function ReviewQueuePage() {
   const { user } = useAuth();
@@ -15,7 +16,7 @@ export function ReviewQueuePage() {
   }
 
   useEffect(() => {
-    reload().catch((e) => setError(String(e)));
+    reload().catch((e) => setError(toMessage(e)));
   }, []);
 
   async function decide(item: ReviewItem, pass: boolean) {
@@ -29,7 +30,7 @@ export function ReviewQueuePage() {
       });
       await reload();
     } catch (e) {
-      setError(String(e));
+      setError(toMessage(e));
     }
   }
 

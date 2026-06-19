@@ -5,6 +5,7 @@ import { listImportRuns, type ImportRun } from "../data/imports";
 import { parseChannelsFile } from "../lib/parseChannels";
 import { reconcile } from "../lib/reconcile";
 import type { Channel } from "../lib/types";
+import { toMessage } from "../lib/errors";
 
 export function ChannelsPage() {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -19,7 +20,7 @@ export function ChannelsPage() {
   }
 
   useEffect(() => {
-    reload().catch((e) => setError(String(e)));
+    reload().catch((e) => setError(toMessage(e)));
   }, []);
 
   async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -34,7 +35,7 @@ export function ChannelsPage() {
       await applyReconcilePlan(supabase, plan);
       await reload();
     } catch (err) {
-      setError(String(err));
+      setError(toMessage(err));
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";

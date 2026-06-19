@@ -14,7 +14,11 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <nav aria-label="principal" className="sidebar">
-        <div className="brand">Verificador YT</div>
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">✓</span>
+          <span className="brand-text">Verificador<span className="brand-accent">YT</span></span>
+        </div>
+        <p className="nav-label">Monitoreo</p>
         <ul>
           {MENUS.map((m) => (
             <li key={m.to}>
@@ -23,8 +27,8 @@ export function AppShell() {
           ))}
         </ul>
         <div aria-label="cuenta" className="account">
-          <span>{user?.email}</span>
-          <button type="button" onClick={() => supabase.auth.signOut()}>Cerrar sesión</button>
+          <span className="account-email">{user?.email}</span>
+          <button type="button" className="ghost-btn" onClick={() => supabase.auth.signOut()}>Cerrar sesión</button>
         </div>
       </nav>
       <main><Outlet /></main>

@@ -5,6 +5,7 @@ import { createCampaign } from "../data/campaigns";
 import { listChannels } from "../data/channels";
 import { validateCampaignForm, type CampaignForm, type RequirementCode } from "../lib/brief";
 import type { Channel } from "../lib/types";
+import { toMessage } from "../lib/errors";
 
 const REQUIREMENT_LABELS: Record<RequirementCode, string> = {
   R1: "Link de descarga en la descripción",
@@ -58,7 +59,7 @@ export function CampaignEditor() {
       await createCampaign(supabase, form, selected);
       navigate("/campaigns");
     } catch (err) {
-      setErrors([String(err)]);
+      setErrors([toMessage(err)]);
     } finally {
       setSaving(false);
     }

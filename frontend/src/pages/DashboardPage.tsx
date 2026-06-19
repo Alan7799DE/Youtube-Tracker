@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { listDashboardRows } from "../data/dashboard";
 import { summarize, type DashboardRow } from "../lib/dashboard";
 import { dashboardRowBadge } from "../lib/status";
+import { toMessage } from "../lib/errors";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listDashboardRows(supabase).then(setRows).catch((e) => setError(String(e)));
+    listDashboardRows(supabase).then(setRows).catch((e) => setError(toMessage(e)));
   }, []);
 
   const s = summarize(rows);
@@ -22,10 +23,10 @@ export function DashboardPage() {
       {error && <p role="alert">{error}</p>}
 
       <div className="cards">
-        <div className="card"><span className="card-num">{s.total}</span><span>Total</span></div>
-        <div className="card"><span className="card-num">{s.onTrack}</span><span>Al día</span></div>
-        <div className="card"><span className="card-num">{s.attention}</span><span>Requieren atención</span></div>
-        <div className="card"><span className="card-num">{s.pending}</span><span>Pendientes</span></div>
+        <div className="card card--total"><span className="card-label">Total</span><span className="card-num">{s.total}</span></div>
+        <div className="card card--ontrack"><span className="card-label">Al día</span><span className="card-num">{s.onTrack}</span></div>
+        <div className="card card--attention"><span className="card-label">Requieren atención</span><span className="card-num">{s.attention}</span></div>
+        <div className="card card--pending"><span className="card-label">Pendientes</span><span className="card-num">{s.pending}</span></div>
       </div>
 
       <table>

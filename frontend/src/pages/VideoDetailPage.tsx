@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getVideoDetail, type VideoDetail } from "../data/videos";
 import { youtubeTimestampUrl } from "../lib/youtube";
+import { toMessage } from "../lib/errors";
 
 const VERDICT_LABEL: Record<string, string> = { pass: "Cumple", fail: "No cumplió", review: "En revisión" };
 
@@ -13,7 +14,7 @@ export function VideoDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    getVideoDetail(supabase, id).then(setDetail).catch((e) => setError(String(e)));
+    getVideoDetail(supabase, id).then(setDetail).catch((e) => setError(toMessage(e)));
   }, [id]);
 
   if (error) return <p role="alert">{error}</p>;

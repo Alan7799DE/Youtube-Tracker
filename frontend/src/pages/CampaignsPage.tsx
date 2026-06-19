@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { listCampaigns, closeCampaign } from "../data/campaigns";
 import type { Campaign } from "../lib/types";
+import { toMessage } from "../lib/errors";
 
 export function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -13,7 +14,7 @@ export function CampaignsPage() {
   }
 
   useEffect(() => {
-    reload().catch((e) => setError(String(e)));
+    reload().catch((e) => setError(toMessage(e)));
   }, []);
 
   async function onClose(id: string) {
@@ -21,7 +22,7 @@ export function CampaignsPage() {
       await closeCampaign(supabase, id);
       await reload();
     } catch (e) {
-      setError(String(e));
+      setError(toMessage(e));
     }
   }
 
