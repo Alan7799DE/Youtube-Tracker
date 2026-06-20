@@ -10,6 +10,8 @@
 
 Corre **local** (máquina del usuario, IP residencial). No necesita Supabase todavía.
 
+> 📘 **Paso a paso completo:** [`guia-fase-1-testeo.md`](guia-fase-1-testeo.md) — cómo conseguir las claves, configurar `.env`, correr el smoke test (`verify-video`) y la evaluación contra el set dorado (`verify-eval`). El código, los briefs de ejemplo ([`backend/briefs/`](../backend/briefs/)) y la plantilla del set dorado ([`backend/golden/`](../backend/golden/)) ya están en el repo.
+
 - [ ] **API key de OpenAI** — [platform.openai.com](https://platform.openai.com) → API keys. Requiere **billing activado** (pago por uso, no es ChatGPT Plus). → `backend/.env`: `OPENAI_API_KEY`
 - [ ] **API key de YouTube Data API v3** — [console.cloud.google.com](https://console.cloud.google.com): crear proyecto → habilitar "YouTube Data API v3" → Credenciales → API key. → `backend/.env`: `YOUTUBE_API_KEY`
 - [ ] **Modelo de LLM** (decisión) — por defecto `gpt-4o-mini`. → `backend/.env`: `LLM_MODEL`
