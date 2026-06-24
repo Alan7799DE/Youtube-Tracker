@@ -1,0 +1,33 @@
+{
+  "game_name": "Mystic Realms",
+  "requirements": [
+    {
+      "code": "R1",
+      "type": "link_in_desc",
+      "spec": { "expected_link": "https://dl.mysticrealms.gg/download" },
+      "method": "deterministic",
+      "required": true
+    },
+    {
+      "code": "R2",
+      "type": "code_in_desc",
+      "spec": { "code": "MYSTIC10" },
+      "method": "deterministic",
+      "required": true
+    },
+    {
+      "code": "R3",
+      "type": "mention_name",
+      "spec": { "game_name": "Mystic Realms" },
+      "method": "llm",
+      "required": true
+    },
+    {
+      "code": "R4",
+      "type": "describe_game",
+      "spec": { "game_name": "Mystic Realms" },
+      "method": "llm",
+      "required": true
+    }
+  ]
+}

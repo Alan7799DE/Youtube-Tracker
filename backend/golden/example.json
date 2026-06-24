@@ -1,12 +1,34 @@
 [
   {
-    "video_id": "EXAMPLE_VIDEO_ID",
+    "video_id": "REEMPLAZAR_ID_VIDEO_QUE_CUMPLE",
     "expected_overall": "pass",
     "brief": {
       "game_name": "Mystic Realms",
       "requirements": [
-        {"code": "R1", "type": "link_in_desc", "spec": {"expected_link": "https://dl.game/x"}, "method": "deterministic", "required": true},
+        {"code": "R1", "type": "link_in_desc", "spec": {"expected_link": "https://dl.mysticrealms.gg/download"}, "method": "deterministic", "required": true},
         {"code": "R3", "type": "mention_name", "spec": {"game_name": "Mystic Realms"}, "method": "llm", "required": true}
+      ]
+    }
+  },
+  {
+    "video_id": "REEMPLAZAR_ID_VIDEO_QUE_NO_CUMPLE",
+    "expected_overall": "fail",
+    "brief": {
+      "game_name": "Mystic Realms",
+      "requirements": [
+        {"code": "R1", "type": "link_in_desc", "spec": {"expected_link": "https://dl.mysticrealms.gg/download"}, "method": "deterministic", "required": true},
+        {"code": "R2", "type": "code_in_desc", "spec": {"code": "MYSTIC10"}, "method": "deterministic", "required": true}
+      ]
+    }
+  },
+  {
+    "video_id": "REEMPLAZAR_ID_VIDEO_AMBIGUO",
+    "expected_overall": "review",
+    "brief": {
+      "game_name": "Mystic Realms",
+      "requirements": [
+        {"code": "R3", "type": "mention_name", "spec": {"game_name": "Mystic Realms"}, "method": "llm", "required": true},
+        {"code": "R5", "type": "show_gameplay", "spec": {}, "method": "human", "required": true}
       ]
     }
   }
